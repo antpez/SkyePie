@@ -1,24 +1,161 @@
-# Expo Router Example
+# SkyePie Weather App
 
-Use [`expo-router`](https://docs.expo.dev/router/introduction/) to build native navigation using files in the `app/` directory.
+A clean, minimal weather app built with React Native, Expo, and TypeScript.
 
-## Launch your own
+## Features
 
-[![Launch with Expo](https://github.com/expo/examples/blob/master/.gh-assets/launch.svg?raw=true)](https://launch.expo.dev/?github=https://github.com/expo/examples/tree/master/with-router)
+- 🌤️ Current weather conditions
+- 📅 7-day forecast
+- 🔍 Location search
+- 📍 GPS location detection
+- 🌙 Dark/Light theme support
+- ⚙️ Customizable units and display options
+- 📱 Offline support with caching
 
-## 🚀 How to use
+## Tech Stack
 
-```sh
-npx create-expo-app -e with-router
+- **Frontend**: React Native with TypeScript, Expo, and Expo Router
+- **UI Framework**: React Native Paper
+- **State Management**: Redux Toolkit
+- **Location Services**: Expo Location
+- **Weather API**: OpenWeatherMap
+- **Storage**: AsyncStorage
+
+## Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+- Expo CLI
+- iOS Simulator (for iOS development) or Android Studio (for Android development)
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd SkyePie
 ```
 
-## Deploy
+2. Install dependencies:
+```bash
+npm install
+```
 
-Deploy on all platforms with Expo Application Services (EAS).
+3. Get an OpenWeatherMap API key:
+   - Visit [OpenWeatherMap](https://openweathermap.org/api)
+   - Sign up for a free account
+   - Generate an API key
 
-- Deploy the website: `npx eas-cli deploy` — [Learn more](https://docs.expo.dev/eas/hosting/get-started/)
-- Deploy on iOS and Android using: `npx eas-cli build` — [Learn more](https://expo.dev/eas)
+4. Configure the API key:
+   - Open `src/config/app.ts`
+   - Replace `'your_api_key_here'` with your actual API key
+   - Or set the environment variable `EXPO_PUBLIC_OPENWEATHER_API_KEY`
 
-## 📝 Notes
+## Running the App
 
-- [Expo Router: Docs](https://docs.expo.dev/router/introduction/)
+1. Start the development server:
+```bash
+npm start
+```
+
+2. Run on your preferred platform:
+   - **iOS**: Press `i` in the terminal or scan the QR code with your iPhone
+   - **Android**: Press `a` in the terminal or scan the QR code with your Android device
+   - **Web**: Press `w` in the terminal
+
+## Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── common/         # Generic components
+│   ├── weather/        # Weather-specific components
+│   └── location/       # Location-related components
+├── hooks/              # Custom React hooks
+├── services/           # External services (API, storage)
+├── store/              # Redux store and slices
+├── styles/             # Theme and styling
+├── types/              # TypeScript type definitions
+├── utils/              # Utility functions
+└── config/             # App configuration
+```
+
+## Key Components
+
+- **WeatherCard**: Displays current weather conditions
+- **ForecastRow**: Shows 7-day forecast in a horizontal scroll
+- **LocationSearch**: Handles location search and autocomplete
+- **LocationPermission**: Manages location permission requests
+
+## Features Implementation
+
+### Weather Data
+- Fetches current weather and forecast from OpenWeatherMap API
+- Caches data locally for offline access
+- Supports metric and imperial units
+
+### Location Services
+- GPS location detection
+- Location permission handling
+- Reverse geocoding for location names
+- Search functionality for cities worldwide
+
+### Theme Support
+- Light and dark themes
+- System theme detection
+- Smooth theme transitions
+
+### Offline Support
+- Caches weather data locally
+- Shows last known weather when offline
+- Graceful error handling
+
+## Configuration
+
+The app can be configured through `src/config/app.ts`:
+
+- API endpoints
+- Cache timeouts
+- Default location
+- App settings
+
+## Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+EXPO_PUBLIC_OPENWEATHER_API_KEY=your_api_key_here
+```
+
+## Building for Production
+
+1. Build for iOS:
+```bash
+npx expo build:ios
+```
+
+2. Build for Android:
+```bash
+npx expo build:android
+```
+
+3. Build for Web:
+```bash
+npx expo export -p web
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Support
+
+For support, please open an issue in the GitHub repository.
