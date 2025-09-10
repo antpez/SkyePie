@@ -37,11 +37,10 @@ yarn-error.*
 
 app-example
 
-# local env
+# local env files
 .env
+.env.local
+.env.*.local
 
-# local env
-.env
-
-# local env
-.env
+# example env file (safe to commit)
+!.env.example
