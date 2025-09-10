@@ -1,5 +1,6 @@
 export interface Location {
   id: string;
+  userId?: string;
   name: string;
   country: string;
   state?: string;

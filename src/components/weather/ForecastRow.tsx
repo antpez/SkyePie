@@ -1,21 +1,21 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
-import { ForecastItem, TemperatureUnit } from '../../types';
+import { useUnits } from '../../contexts/UnitsContext';
+import { ForecastItem } from '../../types';
 import { WeatherIcon } from './WeatherIcon';
 import { formatTemperature, formatDayOfWeek } from '../../utils/formatters';
 
 interface ForecastRowProps {
   forecast: ForecastItem[];
-  temperatureUnit?: TemperatureUnit;
 }
 
-export const ForecastRow: React.FC<ForecastRowProps> = ({
+export const ForecastRow: React.FC<ForecastRowProps> = memo(({
   forecast,
-  temperatureUnit = 'celsius',
 }) => {
   const { effectiveTheme, theme } = useThemeContext();
+  const { units } = useUnits();
 
   // Theme-aware text styles
   const dayNameStyle = useMemo(() => [
@@ -86,10 +86,10 @@ export const ForecastRow: React.FC<ForecastRowProps> = ({
                 <WeatherIcon condition={item.weatherIcon} size={32} />
                 <View style={styles.temperatureContainer}>
                   <Text variant="bodyMedium" style={highTempStyle}>
-                    {formatTemperature(item.dailyHigh, temperatureUnit).replace(/[°CF]/, '')}
+                    {formatTemperature(item.dailyHigh, units.temperature).replace(/[°CF]/, '')}
                   </Text>
                   <Text variant="bodySmall" style={lowTempStyle}>
-                    {formatTemperature(item.dailyLow, temperatureUnit).replace(/[°CF]/, '')}
+                    {formatTemperature(item.dailyLow, units.temperature).replace(/[°CF]/, '')}
                   </Text>
                 </View>
               </Card.Content>
@@ -99,7 +99,7 @@ export const ForecastRow: React.FC<ForecastRowProps> = ({
       </ScrollView>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -141,3 +141,5 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
+
+ForecastRow.displayName = 'ForecastRow';

@@ -1,15 +1,19 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { Text, FAB, Snackbar } from 'react-native-paper';
+import { Text, FAB, Snackbar, Button, SegmentedButtons } from 'react-native-paper';
 import { useLocalSearchParams } from 'expo-router';
-import { WeatherCard, ForecastRow, LoadingSpinner } from '../../src/components';
-import { useLocation, useWeather } from '../../src/hooks';
+import { WeatherCard, ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts } from '../../src/components';
+import { NetworkErrorDisplay } from '../../src/components/common/NetworkErrorDisplay';
+import { useLocation } from '../../src/hooks';
+import { useOfflineWeather } from '../../src/hooks/useOfflineWeather';
 import { useThemeContext } from '../../src/contexts/ThemeContext';
+import { useDatabase } from '../../src/contexts/DatabaseContext';
 import { LocationCoordinates } from '../../src/types';
 import { APP_CONFIG } from '../../src/config/app';
 
 export default function WeatherScreen() {
   const { effectiveTheme, theme } = useThemeContext();
+  const { isInitialized: dbInitialized, isInitializing: dbInitializing, error: dbError } = useDatabase();
   const { currentLocation, permissionStatus, getCurrentLocation } = useLocation();
   const searchParams = useLocalSearchParams();
   
@@ -19,20 +23,29 @@ export default function WeatherScreen() {
   const { 
     currentWeather, 
     forecast, 
+    alerts,
     isLoading, 
     error, 
+    networkError,
+    isOffline,
+    isOnline,
+    isSlowConnection,
     fetchCurrentWeather, 
     fetchForecast,
-    refreshWeather 
-  } = useWeather(API_KEY);
+    fetchAlerts,
+    refreshWeather,
+    clearNetworkError,
+    refreshNetworkStatus
+  } = useOfflineWeather(API_KEY);
 
   const [refreshing, setRefreshing] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<LocationCoordinates | null>(null);
+  const [showHourlyForecast, setShowHourlyForecast] = useState(false);
   const processedSearchParams = useRef<string>('');
 
-  // Memoized values for performance
+  // Memoized values for performance - optimized dependencies
   const locationToUse = useMemo(() => selectedLocation || currentLocation, [selectedLocation, currentLocation]);
   const hasSearchParams = useMemo(() => 
     !!(searchParams.latitude && searchParams.longitude), 
@@ -42,24 +55,46 @@ export default function WeatherScreen() {
     hasSearchParams ? `${searchParams.latitude}-${searchParams.longitude}` : '', 
     [hasSearchParams, searchParams.latitude, searchParams.longitude]
   );
-  
-  // Memoized theme-dependent styles
+
+  // (Weather map temporarily disabled)
+
+  // Memoized theme styles to prevent re-renders
   const containerStyle = useMemo(() => [
     styles.container, 
     { backgroundColor: theme.colors.background }
-  ], [theme.colors.background, effectiveTheme]);
+  ], [theme.colors.background]);
+
+  const emptyTitleStyle = useMemo(() => [
+    styles.emptyTitle, 
+    { color: theme.colors.onSurface }
+  ], [theme.colors.onSurface]);
+
+  const emptyMessageStyle = useMemo(() => [
+    styles.emptyMessage, 
+    { color: theme.colors.onSurface }
+  ], [theme.colors.onSurface]);
 
   const loadWeatherData = useCallback(async (location: LocationCoordinates) => {
     try {
-      await Promise.all([
+      // Use Promise.allSettled to prevent one failure from stopping others
+      const results = await Promise.allSettled([
         fetchCurrentWeather(location.latitude, location.longitude),
         fetchForecast(location.latitude, location.longitude),
+        fetchAlerts(location.latitude, location.longitude),
       ]);
+      
+      // Log any failures but don't throw
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const operation = ['current weather', 'forecast', 'alerts'][index];
+          console.warn(`Failed to load ${operation}:`, result.reason);
+        }
+      });
     } catch (err) {
       console.error('Error loading weather data:', err);
       setSnackbarVisible(true);
     }
-  }, [fetchCurrentWeather, fetchForecast]);
+  }, [fetchCurrentWeather, fetchForecast, fetchAlerts]);
 
   const handleRefresh = useCallback(async () => {
     if (!locationToUse) return;
@@ -101,10 +136,14 @@ export default function WeatherScreen() {
         if (location) {
           await loadWeatherData(location);
         }
-        } catch (err) {
-          // Auto location request failed - user can manually request location
-          // No need to log this as it's expected behavior
-        }
+      } catch (err) {
+        // Use a fallback location (London) for testing
+        const fallbackLocation: LocationCoordinates = {
+          latitude: 51.5074,
+          longitude: -0.1278,
+        };
+        await loadWeatherData(fallbackLocation);
+      }
     };
     
     initApp();
@@ -152,6 +191,41 @@ export default function WeatherScreen() {
   }, [currentLocation, isInitializing, selectedLocation]);
 
 
+  // Show database initialization loading
+  if (dbInitializing) {
+    return (
+      <View style={containerStyle} key={`db-initializing-${effectiveTheme}`}>
+        <LoadingSpinner message="Initializing app..." />
+      </View>
+    );
+  }
+
+  // Show database error
+  if (dbError) {
+    return (
+      <View style={containerStyle} key={`db-error-${effectiveTheme}`}>
+        <View style={styles.permissionContainer}>
+          <Text variant="headlineSmall" style={[styles.permissionTitle, { color: theme.colors.onSurface }]}>
+            Database Error
+          </Text>
+          <Text variant="bodyLarge" style={[styles.permissionMessage, { color: theme.colors.onSurface }]}>
+            {dbError}
+          </Text>
+          <FAB
+            icon="refresh"
+            label="Retry"
+            onPress={() => {
+              // Force app restart by reloading the current screen
+              const { router } = require('expo-router');
+              router.replace('/(tabs)/');
+            }}
+            style={styles.fab}
+          />
+        </View>
+      </View>
+    );
+  }
+
   // Show permission screen if location permission is not granted or no weather data
   if ((permissionStatus.status === 'denied' || permissionStatus.status === 'undetermined') && !currentWeather) {
     return (
@@ -162,6 +236,9 @@ export default function WeatherScreen() {
           </Text>
           <Text variant="bodyLarge" style={[styles.permissionMessage, { color: theme.colors.onSurface }]}>
             Please enable location access to get weather for your current location.
+          </Text>
+          <Text variant="bodyMedium" style={[styles.permissionSubtext, { color: theme.colors.onSurfaceVariant }]}>
+            For iOS Simulator: Go to Device → Location → Custom Location and enter coordinates
           </Text>
           <FAB
             icon="map-marker"
@@ -222,6 +299,15 @@ export default function WeatherScreen() {
           </Text>
         </View>
       )}
+
+      {isOffline && (
+        <View style={[styles.offlineIndicator, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <Text variant="bodySmall" style={[styles.offlineText, { color: theme.colors.onSurfaceVariant }]}>
+            📡 Showing cached data (offline)
+          </Text>
+        </View>
+      )}
+
       
       <ScrollView
         style={styles.scrollView}
@@ -238,20 +324,67 @@ export default function WeatherScreen() {
           <WeatherCard
             key={`weather-${effectiveTheme}`}
             weather={currentWeather}
-            temperatureUnit="celsius"
-            windSpeedUnit="kmh"
-            pressureUnit="hpa"
             showDetails={true}
           />
         )}
 
+        {alerts && alerts.length > 0 && (
+          <WeatherAlerts
+            key={`alerts-${effectiveTheme}`}
+            alerts={alerts}
+          />
+        )}
+
+        {networkError && (
+          <NetworkErrorDisplay
+            key={`network-error-${effectiveTheme}`}
+            error={networkError}
+            onRetry={async () => {
+              clearNetworkError();
+              if (locationToUse) {
+                await loadWeatherData(locationToUse);
+              }
+            }}
+            onDismiss={clearNetworkError}
+          />
+        )}
+
+        {/* Weather Map temporarily unavailable (requires paid subscription) */}
 
         {forecast && (
-          <ForecastRow
-            key={`forecast-${effectiveTheme}`}
-            forecast={forecast.list}
-            temperatureUnit="celsius"
-          />
+          <View key={`forecast-container-${effectiveTheme}`}>
+            <View style={styles.forecastToggleContainer}>
+              <SegmentedButtons
+                value={showHourlyForecast ? 'hourly' : 'daily'}
+                onValueChange={(value) => setShowHourlyForecast(value === 'hourly')}
+                buttons={[
+                  {
+                    value: 'daily',
+                    label: 'Daily',
+                    icon: 'calendar-today',
+                  },
+                  {
+                    value: 'hourly',
+                    label: 'Hourly',
+                    icon: 'clock-outline',
+                  },
+                ]}
+                style={[styles.segmentedButtons, { backgroundColor: theme.colors.surfaceVariant }]}
+              />
+            </View>
+            
+            {showHourlyForecast ? (
+              <HourlyForecast
+                key={`hourly-forecast-${effectiveTheme}`}
+                forecast={forecast.list}
+              />
+            ) : (
+              <ForecastRow
+                key={`daily-forecast-${effectiveTheme}`}
+                forecast={forecast.list}
+              />
+            )}
+          </View>
         )}
 
         {!currentWeather && !isLoading && (
@@ -312,8 +445,14 @@ const styles = StyleSheet.create({
   },
   permissionMessage: {
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
     lineHeight: 24,
+  },
+  permissionSubtext: {
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 20,
+    fontSize: 14,
   },
   errorContainer: {
     flex: 1,
@@ -347,10 +486,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
+  offlineIndicator: {
+    padding: 8,
+    alignItems: 'center',
+  },
+  offlineText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
   fab: {
     position: 'absolute',
     margin: 16,
     right: 0,
     bottom: 0,
+  },
+  forecastToggleContainer: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  segmentedButtons: {
+    borderRadius: 8,
   },
 });

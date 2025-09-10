@@ -2,7 +2,7 @@ import React from 'react';
 import { Card as PaperCard, CardProps as PaperCardProps } from 'react-native-paper';
 import { StyleSheet, ViewStyle } from 'react-native';
 
-interface CardProps extends PaperCardProps {
+interface CardProps extends Omit<PaperCardProps, 'elevation'> {
   children: React.ReactNode;
   style?: ViewStyle;
   elevation?: number;
@@ -17,7 +17,6 @@ export const Card: React.FC<CardProps> = ({
   return (
     <PaperCard 
       style={[styles.card, style]} 
-      elevation={elevation}
       {...props}
     >
       {children}

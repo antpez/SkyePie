@@ -8,8 +8,8 @@ export const APP_CONFIG = {
     openWeatherMap: {
       baseUrl: 'https://api.openweathermap.org/data/2.5',
       geocodingUrl: 'https://api.openweathermap.org/geo/1.0',
-      // In production, this should come from environment variables
-      apiKey: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '358ab06272ef530c35a7640d33929064',
+      // Using the working API key directly
+      apiKey: '358ab06272ef530c35a7640d33929064',
     },
   },
   

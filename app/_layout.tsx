@@ -1,21 +1,27 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Stack } from 'expo-router';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { Provider as ReduxProvider } from 'react-redux';
 import { StatusBar } from 'expo-status-bar';
 import { ErrorBoundary } from '../src/components';
 import { ThemeProvider, useThemeContext } from '../src/contexts/ThemeContext';
+import { DatabaseProvider } from '../src/contexts/DatabaseContext';
+import { UnitsProvider } from '../src/contexts/UnitsContext';
+import { AccessibilityProvider } from '../src/contexts/AccessibilityContext';
+import { WeatherMapsProvider } from '../src/contexts/WeatherMapsContext';
 import { store } from '../src/store';
-import { databaseConnection } from '../src/database';
 
 function AppContent() {
   const { effectiveTheme, theme } = useThemeContext();
 
   return (
     <PaperProvider theme={theme} key={effectiveTheme}>
-      <ErrorBoundary>
-        <StatusBar style={effectiveTheme === 'dark' ? 'light' : 'dark'} />
-        <Stack>
+      <AccessibilityProvider>
+        <UnitsProvider>
+          <WeatherMapsProvider>
+            <ErrorBoundary>
+              <StatusBar style={effectiveTheme === 'dark' ? 'light' : 'dark'} />
+              <Stack>
           <Stack.Screen 
             name="(tabs)" 
             options={{ headerShown: false }} 
@@ -32,31 +38,22 @@ function AppContent() {
             options={{ title: 'Not Found' }} 
           />
         </Stack>
-      </ErrorBoundary>
+            </ErrorBoundary>
+          </WeatherMapsProvider>
+        </UnitsProvider>
+      </AccessibilityProvider>
     </PaperProvider>
   );
 }
 
 function RootLayout() {
-  useEffect(() => {
-    // Initialize database
-    const initDatabase = async () => {
-      try {
-        await databaseConnection.initialize();
-        // Database initialized successfully
-      } catch (error) {
-        console.error('Database initialization failed:', error);
-      }
-    };
-    
-    initDatabase();
-  }, []);
-
   return (
     <ReduxProvider store={store}>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
+      <DatabaseProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </DatabaseProvider>
     </ReduxProvider>
   );
 }

@@ -16,6 +16,10 @@ export class WeatherRepository {
     data: CurrentWeather | WeatherForecast,
     expiresAt: Date
   ): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       await this.db.runAsync(
         `INSERT OR REPLACE INTO weather_cache 
@@ -39,6 +43,10 @@ export class WeatherRepository {
     locationId: string,
     weatherType: 'current' | 'forecast' | 'hourly'
   ): Promise<T | null> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const result = await this.db.getFirstAsync<{
         data: string;
@@ -69,6 +77,10 @@ export class WeatherRepository {
     locationId: string,
     weatherType: 'current' | 'forecast' | 'hourly'
   ): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       await this.db.runAsync(
         `DELETE FROM weather_cache 

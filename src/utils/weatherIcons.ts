@@ -91,5 +91,5 @@ export const getWeatherIconFilename = (iconCode: string): string => {
  */
 export const getWeatherIconPath = (iconCode: string): any => {
   const filename = getWeatherIconFilename(iconCode);
-  return weatherIcons[filename] || weatherIcons['sunny.png']; // Default to sunny if not found
+  return weatherIcons[filename as keyof typeof weatherIcons] || weatherIcons['sunny.png']; // Default to sunny if not found
 };

@@ -4,9 +4,12 @@ import {
   WeatherForecast, 
   LocationSearchResult,
   WeatherApiConfig,
-  ApiError 
+  ApiError,
+  WeatherAlert
 } from '../types';
 import { APP_CONFIG } from '../config/app';
+import { networkErrorHandler } from '../utils/networkErrorHandler';
+import { retryHandler } from '../utils/retryHandler';
 
 export class WeatherService {
   private static instance: WeatherService;
@@ -61,37 +64,10 @@ export class WeatherService {
         return response;
       },
       async (error) => {
-        const originalRequest = error.config;
-        
-        if (error.response?.status === 401) {
-          throw this.handleApiError({
-            code: 'UNAUTHORIZED',
-            message: 'Invalid API key. Please check your OpenWeatherMap API key.',
-            details: error.response.data,
-          });
-        }
-
-        if (error.response?.status === 429) {
-          throw this.handleApiError({
-            code: 'RATE_LIMITED',
-            message: 'API rate limit exceeded. Please try again later.',
-            details: error.response.data,
-          });
-        }
-
-        if (error.response?.status >= 500) {
-          throw this.handleApiError({
-            code: 'SERVER_ERROR',
-            message: 'Weather service is temporarily unavailable. Please try again later.',
-            details: error.response.data,
-          });
-        }
-
-        throw this.handleApiError({
-          code: error.code || 'NETWORK_ERROR',
-          message: error.message || 'Network error occurred',
-          details: error.response?.data,
-        });
+        // Use the new network error handler
+        const networkError = networkErrorHandler.createNetworkError(error);
+        networkErrorHandler.logError(networkError, 'WeatherService');
+        throw networkError;
       }
     );
   }
@@ -101,20 +77,25 @@ export class WeatherService {
     longitude: number,
     units: 'metric' | 'imperial' = 'metric'
   ): Promise<CurrentWeather> {
-    try {
-      const response: AxiosResponse<CurrentWeather> = await this.api.get('/weather', {
-        params: {
-          lat: latitude,
-          lon: longitude,
-          units,
-        },
-      });
+    return retryHandler.executeWithRetry(
+      async () => {
+        const response: AxiosResponse<CurrentWeather> = await this.api.get('/weather', {
+          params: {
+            lat: latitude,
+            lon: longitude,
+            units,
+          },
+        });
 
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching current weather:', error);
-      throw error;
-    }
+        return response.data;
+      },
+      {
+        context: 'WeatherService.getCurrentWeather',
+        onRetry: (attempt, error) => {
+          console.warn(`Retrying getCurrentWeather (attempt ${attempt}):`, error.message);
+        },
+      }
+    );
   }
 
   async getWeatherForecast(
@@ -163,6 +144,7 @@ export class WeatherService {
         code: 'SEARCH_ERROR',
         message: 'Failed to search locations. Please try again.',
         details: error,
+        timestamp: Date.now(),
       });
     }
   }
@@ -196,8 +178,18 @@ export class WeatherService {
         code: 'REVERSE_GEOCODE_ERROR',
         message: 'Failed to get location name. Please try again.',
         details: error,
+        timestamp: Date.now(),
       });
     }
+  }
+
+  async getWeatherAlerts(
+    latitude: number, 
+    longitude: number
+  ): Promise<WeatherAlert[]> {
+    // Weather alerts require One Call API which is not available with free tier
+    // Return empty array for now - this feature requires a paid OpenWeatherMap subscription
+    return [];
   }
 
   private handleApiError(error: ApiError): Error {

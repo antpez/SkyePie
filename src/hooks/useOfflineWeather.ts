@@ -1,0 +1,452 @@
+import { useState, useEffect, useCallback } from 'react';
+import { CurrentWeather, WeatherForecast, LocationSearchResult, TemperatureUnit, Location, WeatherAlert } from '../types';
+import { createWeatherService } from '../services';
+import { offlineCacheService, userService } from '../services';
+import { APP_CONFIG } from '../config/app';
+import { useNetworkStatus } from './useNetworkStatus';
+import { NetworkError } from '../types/networkErrors';
+
+export const useOfflineWeather = (apiKey?: string) => {
+  const [currentWeather, setCurrentWeather] = useState<CurrentWeather | null>(null);
+  const [forecast, setForecast] = useState<WeatherForecast | null>(null);
+  const [alerts, setAlerts] = useState<WeatherAlert[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [networkError, setNetworkError] = useState<NetworkError | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Network status monitoring
+  const { isOnline, isSlowConnection, refreshNetworkStatus } = useNetworkStatus();
+
+  // Sync offline state with network status
+  useEffect(() => {
+    setIsOffline(!isOnline);
+  }, [isOnline]);
+
+  const weatherService = apiKey && apiKey !== 'your_api_key_here' ? createWeatherService(apiKey) : null;
+
+  // Helper function to ensure user is initialized and get current user ID
+  const ensureUserInitialized = useCallback(async (): Promise<string> => {
+    if (userId) return userId;
+    
+    try {
+      const user = await userService.getCurrentUser();
+      setUserId(user.id);
+      return user.id;
+    } catch (error) {
+      console.error('Error initializing user:', error);
+      throw new Error('User initialization failed');
+    }
+  }, [userId]);
+
+  // Helper function to create location object
+  const createLocationObject = useCallback((userId: string, latitude: number, longitude: number): Omit<Location, 'id' | 'createdAt' | 'updatedAt'> => ({
+    userId,
+    name: 'Current Location',
+    country: '',
+    latitude,
+    longitude,
+    isCurrent: true,
+    isFavorite: false,
+    searchCount: 0,
+    lastSearched: new Date(),
+  }), []);
+
+  // Initialize user - optimized with better error handling
+  useEffect(() => {
+    let isMounted = true;
+    
+    const initUser = async () => {
+      try {
+        // Add a small delay to ensure database is initialized
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!isMounted) return;
+        
+        const user = await userService.getCurrentUser();
+        if (isMounted) {
+          setUserId(user.id);
+        }
+      } catch (error) {
+        console.error('Error initializing user:', error);
+        // Retry after a longer delay
+        setTimeout(async () => {
+          if (!isMounted) return;
+          try {
+            const user = await userService.getCurrentUser();
+            if (isMounted) {
+              setUserId(user.id);
+            }
+          } catch (retryError) {
+            console.error('Error retrying user initialization:', retryError);
+          }
+        }, 2000);
+      }
+    };
+    
+    initUser();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const fetchCurrentWeather = useCallback(async (
+    latitude: number, 
+    longitude: number,
+    units: TemperatureUnit = 'celsius',
+    forceRefresh: boolean = false
+  ) => {
+    if (!weatherService) {
+      throw new Error('Weather service not initialized. Please provide an API key.');
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Ensure user is initialized
+      const currentUserId = await ensureUserInitialized();
+      const location = createLocationObject(currentUserId, latitude, longitude);
+
+      // Try to get cached data first (unless forcing refresh)
+      if (!forceRefresh) {
+        const cachedWeather = await offlineCacheService.getCachedCurrentWeather(location, currentUserId);
+        if (cachedWeather) {
+          setCurrentWeather(cachedWeather);
+          setLastUpdated(new Date());
+          // Only set offline if we're actually offline, not just using cached data
+          setIsOffline(!isOnline);
+          return cachedWeather;
+        }
+      }
+
+      // Fetch fresh data from API
+      const weather = await weatherService.getCurrentWeather(
+        latitude, 
+        longitude, 
+        units === 'fahrenheit' ? 'imperial' : 'metric'
+      );
+
+      setCurrentWeather(weather);
+      setLastUpdated(new Date());
+      setIsOffline(false);
+
+      // Cache the weather data
+      await offlineCacheService.cacheCurrentWeather(location, weather, currentUserId);
+
+      return weather;
+    } catch (err) {
+      // Handle network errors
+      if (err && typeof err === 'object' && 'type' in err) {
+        const networkErr = err as NetworkError;
+        setNetworkError(networkErr);
+        setError(networkErr.message);
+        
+        // If it's a network error and we're offline, try cached data
+        if (networkErr.type === 'CONNECTION_ERROR' || !isOnline) {
+          setIsOffline(true);
+        }
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch weather data';
+        setError(errorMessage);
+      }
+
+      // If API fails, try to get cached data
+      if (!forceRefresh) {
+        try {
+          const currentUserId = await ensureUserInitialized();
+          const location = createLocationObject(currentUserId, latitude, longitude);
+          const cachedWeather = await offlineCacheService.getCachedCurrentWeather(location, currentUserId);
+          
+          if (cachedWeather) {
+            setCurrentWeather(cachedWeather);
+            setLastUpdated(new Date());
+            // Only set offline if we're actually offline, not just using cached data
+            setIsOffline(!isOnline);
+            return cachedWeather;
+          }
+        } catch (cacheError) {
+          console.error('Error loading cached weather:', cacheError);
+        }
+      }
+
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [weatherService, ensureUserInitialized, createLocationObject]);
+
+  const fetchForecast = useCallback(async (
+    latitude: number, 
+    longitude: number,
+    units: TemperatureUnit = 'celsius',
+    forceRefresh: boolean = false
+  ) => {
+    if (!weatherService) {
+      throw new Error('Weather service not initialized. Please provide an API key.');
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Ensure user is initialized
+      const currentUserId = await ensureUserInitialized();
+      const location = createLocationObject(currentUserId, latitude, longitude);
+
+      // Try to get cached data first (unless forcing refresh)
+      if (!forceRefresh) {
+        const cachedForecast = await offlineCacheService.getCachedWeatherForecast(location, currentUserId);
+        if (cachedForecast) {
+          setForecast(cachedForecast);
+          setLastUpdated(new Date());
+          // Only set offline if we're actually offline, not just using cached data
+          setIsOffline(!isOnline);
+          return cachedForecast;
+        }
+      }
+
+      // Fetch fresh data from API
+      const forecastData = await weatherService.getWeatherForecast(
+        latitude, 
+        longitude, 
+        units === 'fahrenheit' ? 'imperial' : 'metric'
+      );
+
+      setForecast(forecastData);
+      setLastUpdated(new Date());
+      setIsOffline(false);
+
+      // Cache the forecast data
+      await offlineCacheService.cacheWeatherForecast(location, forecastData, currentUserId);
+
+      return forecastData;
+    } catch (err) {
+      // If API fails, try to get cached data
+      if (!forceRefresh) {
+        try {
+          const currentUserId = await ensureUserInitialized();
+          const location = createLocationObject(currentUserId, latitude, longitude);
+          const cachedForecast = await offlineCacheService.getCachedWeatherForecast(location, currentUserId);
+          
+          if (cachedForecast) {
+            setForecast(cachedForecast);
+            setLastUpdated(new Date());
+            // Only set offline if we're actually offline, not just using cached data
+            setIsOffline(!isOnline);
+            return cachedForecast;
+          }
+        } catch (cacheError) {
+          console.error('Error loading cached forecast:', cacheError);
+        }
+      }
+
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch forecast data';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [weatherService, ensureUserInitialized, createLocationObject]);
+
+  const searchLocations = useCallback(async (query: string) => {
+    if (!weatherService) {
+      throw new Error('Weather service not initialized. Please provide an API key.');
+    }
+
+    try {
+      setError(null);
+
+      // Ensure user is initialized
+      const currentUserId = await ensureUserInitialized();
+      
+      // Try to get cached results first
+      const cachedResults = await offlineCacheService.getCachedLocationSearch(query, currentUserId);
+      if (cachedResults.length > 0) {
+        return cachedResults;
+      }
+
+      // Fetch fresh data from API
+      const results = await weatherService.searchLocations(query);
+      
+      // Cache the results
+      await offlineCacheService.cacheLocationSearch(query, results, currentUserId);
+
+      return results;
+    } catch (err) {
+      // If API fails, try to get cached results
+      try {
+        const currentUserId = await ensureUserInitialized();
+        const cachedResults = await offlineCacheService.getCachedLocationSearch(query, currentUserId);
+        if (cachedResults.length > 0) {
+          return cachedResults;
+        }
+      } catch (cacheError) {
+        console.error('Error loading cached search results:', cacheError);
+      }
+
+      const errorMessage = err instanceof Error ? err.message : 'Failed to search locations';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [weatherService, ensureUserInitialized]);
+
+  const reverseGeocode = useCallback(async (latitude: number, longitude: number) => {
+    if (!weatherService) {
+      throw new Error('Weather service not initialized');
+    }
+
+    try {
+      setError(null);
+      return await weatherService.reverseGeocode(latitude, longitude);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to reverse geocode';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [weatherService]);
+
+  const fetchAlerts = useCallback(async (latitude: number, longitude: number) => {
+    if (!weatherService) {
+      throw new Error('Weather service not initialized. Please provide an API key.');
+    }
+
+    try {
+      setError(null);
+      const alertsData = await weatherService.getWeatherAlerts(latitude, longitude);
+      setAlerts(alertsData);
+      setLastUpdated(new Date());
+      setIsOffline(false);
+      return alertsData;
+    } catch (err) {
+      console.error('Error fetching weather alerts:', err);
+      // Alerts are optional, so we don't throw an error
+      setAlerts([]);
+      return [];
+    }
+  }, [weatherService]);
+
+  const refreshWeather = useCallback(async (
+    latitude: number, 
+    longitude: number,
+    units: TemperatureUnit = 'celsius'
+  ) => {
+    try {
+      await Promise.all([
+        fetchCurrentWeather(latitude, longitude, units, true),
+        fetchForecast(latitude, longitude, units, true),
+        fetchAlerts(latitude, longitude),
+      ]);
+    } catch (err) {
+      console.error('Error refreshing weather:', err);
+      throw err;
+    }
+  }, [fetchCurrentWeather, fetchForecast, fetchAlerts]);
+
+  const loadCachedWeather = useCallback(async (latitude: number, longitude: number) => {
+    try {
+      // Ensure user is initialized
+      const currentUserId = await ensureUserInitialized();
+      const location = createLocationObject(currentUserId, latitude, longitude);
+
+      const cachedWeather = await offlineCacheService.getCachedCurrentWeather(location, currentUserId);
+      if (cachedWeather) {
+        setCurrentWeather(cachedWeather);
+        setLastUpdated(new Date());
+        // Only set offline if we're actually offline, not just using cached data
+        setIsOffline(!isOnline);
+        return cachedWeather;
+      }
+    } catch (err) {
+      console.error('Error loading cached weather:', err);
+    }
+    return null;
+  }, [ensureUserInitialized, createLocationObject]);
+
+  const loadCachedForecast = useCallback(async (latitude: number, longitude: number) => {
+    try {
+      // Ensure user is initialized
+      const currentUserId = await ensureUserInitialized();
+      const location = createLocationObject(currentUserId, latitude, longitude);
+
+      const cachedForecast = await offlineCacheService.getCachedWeatherForecast(location, currentUserId);
+      if (cachedForecast) {
+        setForecast(cachedForecast);
+        setLastUpdated(new Date());
+        // Only set offline if we're actually offline, not just using cached data
+        setIsOffline(!isOnline);
+        return cachedForecast;
+      }
+    } catch (err) {
+      console.error('Error loading cached forecast:', err);
+    }
+    return null;
+  }, [ensureUserInitialized, createLocationObject]);
+
+  const clearError = useCallback(() => {
+    setError(null);
+    setNetworkError(null);
+  }, []);
+
+  const clearNetworkError = useCallback(() => {
+    setNetworkError(null);
+  }, []);
+
+  const clearCache = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      await offlineCacheService.clearExpiredCache();
+    } catch (err) {
+      console.error('Error clearing cache:', err);
+    }
+  }, [userId]);
+
+  const getCacheInfo = useCallback(async () => {
+    if (!userId) return null;
+
+    try {
+      return await offlineCacheService.getCacheInfo(userId);
+    } catch (err) {
+      console.error('Error getting cache info:', err);
+      return null;
+    }
+  }, [userId]);
+
+  // Load cached data on mount
+  useEffect(() => {
+    if (userId) {
+      // Clear expired cache on app start
+      clearCache();
+    }
+  }, [userId, clearCache]);
+
+  return {
+    currentWeather,
+    forecast,
+    alerts,
+    isLoading,
+    error,
+    networkError,
+    lastUpdated,
+    isOffline,
+    isOnline,
+    isSlowConnection,
+    userId,
+    fetchCurrentWeather,
+    fetchForecast,
+    fetchAlerts,
+    searchLocations,
+    reverseGeocode,
+    refreshWeather,
+    loadCachedWeather,
+    loadCachedForecast,
+    clearError,
+    clearNetworkError,
+    clearCache,
+    getCacheInfo,
+    refreshNetworkStatus,
+  };
+};

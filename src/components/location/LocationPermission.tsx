@@ -96,7 +96,7 @@ export const LocationPermission: React.FC<LocationPermissionProps> = ({
           
           {permissionStatus.status === 'denied' && !permissionStatus.canAskAgain && (
             <Text variant="bodySmall" style={[styles.helpText, { color: theme.colors.onSurfaceVariant }]}>
-              To enable location access, please go to Settings > Privacy & Security > Location Services and allow access for SkyePie.
+              To enable location access, please go to Settings {'>'} Privacy & Security {'>'} Location Services and allow access for SkyePie.
             </Text>
           )}
         </Card.Content>

@@ -1,65 +1,34 @@
-import { TemperatureUnit, WindSpeedUnit, PressureUnit } from '@/types';
+import { TemperatureUnit, WindSpeedUnit, PressureUnit, DistanceUnit } from '../types/units';
+import { 
+  convertAndFormatTemperature, 
+  convertAndFormatWindSpeed, 
+  convertAndFormatPressure,
+  convertAndFormatDistance 
+} from './unitConversions';
 
 export const formatTemperature = (temp: number, unit: TemperatureUnit = 'celsius'): string => {
-  const roundedTemp = Math.round(temp);
-  return unit === 'fahrenheit' 
-    ? `${roundedTemp}°F` 
-    : `${roundedTemp}°C`;
+  return convertAndFormatTemperature(temp, 'celsius', unit);
 };
 
 export const formatWindSpeed = (speed: number, unit: WindSpeedUnit = 'kmh'): string => {
-  let convertedSpeed: number;
-  let unitSymbol: string;
-
-  switch (unit) {
-    case 'mph':
-      convertedSpeed = speed * 2.237;
-      unitSymbol = 'mph';
-      break;
-    case 'ms':
-      convertedSpeed = speed;
-      unitSymbol = 'm/s';
-      break;
-    case 'kmh':
-    default:
-      convertedSpeed = speed * 3.6;
-      unitSymbol = 'km/h';
-      break;
-  }
-
-  return `${Math.round(convertedSpeed)} ${unitSymbol}`;
+  return convertAndFormatWindSpeed(speed, 'ms', unit);
 };
 
 export const formatPressure = (pressure: number, unit: PressureUnit = 'hpa'): string => {
-  let convertedPressure: number;
-  let unitSymbol: string;
-
-  switch (unit) {
-    case 'in':
-      convertedPressure = pressure * 0.02953;
-      unitSymbol = 'inHg';
-      break;
-    case 'mb':
-      convertedPressure = pressure;
-      unitSymbol = 'mb';
-      break;
-    case 'hpa':
-    default:
-      convertedPressure = pressure;
-      unitSymbol = 'hPa';
-      break;
-  }
-
-  return `${Math.round(convertedPressure)} ${unitSymbol}`;
+  return convertAndFormatPressure(pressure, 'hpa', unit);
 };
 
 export const formatHumidity = (humidity: number): string => {
   return `${humidity}%`;
 };
 
-export const formatVisibility = (visibility: number): string => {
+export const formatDistance = (distance: number, unit: DistanceUnit = 'km'): string => {
+  return convertAndFormatDistance(distance, 'km', unit);
+};
+
+export const formatVisibility = (visibility: number, unit: DistanceUnit = 'km'): string => {
   const km = visibility / 1000;
-  return `${Math.round(km)} km`;
+  return convertAndFormatDistance(km, 'km', unit);
 };
 
 export const formatUVIndex = (uvIndex: number): string => {
@@ -75,7 +44,11 @@ export const formatWindDirection = (degrees: number): string => {
 export const formatTime = (timestamp: number, timezone?: number): string => {
   const date = new Date(timestamp * 1000);
   if (timezone) {
-    date.setTime(date.getTime() + timezone * 1000);
+    // timezone is in seconds offset from UTC
+    // Create a new date with the timezone offset applied
+    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+    const localTime = new Date(utcTime + (timezone * 1000));
+    return localTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
@@ -83,7 +56,14 @@ export const formatTime = (timestamp: number, timezone?: number): string => {
 export const formatDate = (timestamp: number, timezone?: number): string => {
   const date = new Date(timestamp * 1000);
   if (timezone) {
-    date.setTime(date.getTime() + timezone * 1000);
+    // timezone is in seconds offset from UTC
+    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+    const localTime = new Date(utcTime + (timezone * 1000));
+    return localTime.toLocaleDateString([], { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    });
   }
   return date.toLocaleDateString([], { 
     weekday: 'short', 
@@ -95,10 +75,14 @@ export const formatDate = (timestamp: number, timezone?: number): string => {
 export const formatDayOfWeek = (timestamp: number, timezone?: number): string => {
   const date = new Date(timestamp * 1000);
   if (timezone) {
-    date.setTime(date.getTime() + timezone * 1000);
+    // timezone is in seconds offset from UTC
+    const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+    const localTime = new Date(utcTime + (timezone * 1000));
+    return localTime.toLocaleDateString([], { weekday: 'short' });
   }
   return date.toLocaleDateString([], { weekday: 'short' });
 };
+
 
 // Theme-aware temperature color function
 export const getThemeAwareTemperatureColor = (

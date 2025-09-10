@@ -1,12 +1,23 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { List, Switch, Divider, Text, Card, Snackbar } from 'react-native-paper';
+import { List, Switch, Divider, Text, Card, Snackbar, Button } from 'react-native-paper';
 import { useThemeContext } from '../../src/contexts/ThemeContext';
+import { useDatabase } from '../../src/contexts/DatabaseContext';
+import { useUnits } from '../../src/contexts/UnitsContext';
+import { offlineCacheService, userService } from '../../src/services';
 
 export default function SettingsScreen() {
   const { themeMode, setTheme, effectiveTheme, isLoading, theme } = useThemeContext();
+  const { isInitialized: dbInitialized, isInitializing: dbInitializing } = useDatabase();
+  const { units, setTemperatureUnit, setWindSpeedUnit, setPressureUnit, setDistanceUnit } = useUnits();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cacheInfo, setCacheInfo] = useState<{
+    totalLocations: number;
+    favoriteLocations: number;
+    cachedWeatherLocations: number;
+  } | null>(null);
+  const [isLoadingCache, setIsLoadingCache] = useState(false);
   
   // Create description text to avoid template literal issues
   const getThemeDescription = () => {
@@ -22,6 +33,23 @@ export default function SettingsScreen() {
   
   const themeDescription = getThemeDescription();
 
+  // Helper functions for unit symbols
+  const getTemperatureSymbol = () => units.temperature === 'fahrenheit' ? '°F' : '°C';
+  const getWindSpeedSymbol = () => {
+    switch (units.windSpeed) {
+      case 'mph': return 'mph';
+      case 'ms': return 'm/s';
+      default: return 'km/h';
+    }
+  };
+  const getPressureSymbol = () => {
+    switch (units.pressure) {
+      case 'mb': return 'mb';
+      case 'in': return 'inHg';
+      default: return 'hPa';
+    }
+  };
+
   const handleThemeChange = useCallback(async (newTheme: 'light' | 'dark' | 'system') => {
     if (!isLoading) {
       try {
@@ -34,6 +62,82 @@ export default function SettingsScreen() {
       }
     }
   }, [setTheme, isLoading]);
+
+  const handleTemperatureUnitChange = useCallback(async () => {
+    try {
+      const newUnit = units.temperature === 'celsius' ? 'fahrenheit' : 'celsius';
+      await setTemperatureUnit(newUnit);
+      setSnackbarVisible(true);
+      setError(null);
+    } catch (error) {
+      console.error('Error changing temperature unit:', error);
+      setError('Failed to change temperature unit. Please try again.');
+      setSnackbarVisible(true);
+    }
+  }, [units.temperature, setTemperatureUnit]);
+
+  const handleWindSpeedUnitChange = useCallback(async () => {
+    try {
+      const windUnits = ['kmh', 'mph', 'ms'] as const;
+      const currentIndex = windUnits.indexOf(units.windSpeed);
+      const nextIndex = (currentIndex + 1) % windUnits.length;
+      await setWindSpeedUnit(windUnits[nextIndex]);
+      setSnackbarVisible(true);
+      setError(null);
+    } catch (error) {
+      console.error('Error changing wind speed unit:', error);
+      setError('Failed to change wind speed unit. Please try again.');
+      setSnackbarVisible(true);
+    }
+  }, [units.windSpeed, setWindSpeedUnit]);
+
+  const handlePressureUnitChange = useCallback(async () => {
+    try {
+      const pressureUnits = ['hpa', 'mb', 'in'] as const;
+      const currentIndex = pressureUnits.indexOf(units.pressure);
+      const nextIndex = (currentIndex + 1) % pressureUnits.length;
+      await setPressureUnit(pressureUnits[nextIndex]);
+      setSnackbarVisible(true);
+      setError(null);
+    } catch (error) {
+      console.error('Error changing pressure unit:', error);
+      setError('Failed to change pressure unit. Please try again.');
+      setSnackbarVisible(true);
+    }
+  }, [units.pressure, setPressureUnit]);
+
+  const loadCacheInfo = useCallback(async () => {
+    if (!dbInitialized) return;
+    
+    try {
+      setIsLoadingCache(true);
+      const user = await userService.getCurrentUser();
+      const info = await offlineCacheService.getCacheInfo(user.id);
+      setCacheInfo(info);
+    } catch (error) {
+      console.error('Error loading cache info:', error);
+    } finally {
+      setIsLoadingCache(false);
+    }
+  }, [dbInitialized]);
+
+  const clearExpiredCache = useCallback(async () => {
+    try {
+      await offlineCacheService.clearExpiredCache();
+      await loadCacheInfo();
+      setSnackbarVisible(true);
+      setError(null);
+    } catch (error) {
+      console.error('Error clearing expired cache:', error);
+      setError('Failed to clear cache. Please try again.');
+      setSnackbarVisible(true);
+    }
+  }, [loadCacheInfo]);
+
+  // Load cache info on mount
+  useEffect(() => {
+    loadCacheInfo();
+  }, [loadCacheInfo]);
 
   // Memoized values for performance
   const containerStyle = useMemo(() => [
@@ -142,7 +246,8 @@ export default function SettingsScreen() {
             title="Temperature"
             description="Celsius or Fahrenheit"
             left={(props) => <List.Icon {...props} icon="thermometer" />}
-            right={() => <Text style={{ color: theme.colors.onSurface }}>°C</Text>}
+            right={() => <Text style={{ color: theme.colors.onSurface }}>{getTemperatureSymbol()}</Text>}
+            onPress={handleTemperatureUnitChange}
           />
           
           <Divider />
@@ -151,7 +256,8 @@ export default function SettingsScreen() {
             title="Wind Speed"
             description="km/h, mph, or m/s"
             left={(props) => <List.Icon {...props} icon="weather-windy" />}
-            right={() => <Text style={{ color: theme.colors.onSurface }}>km/h</Text>}
+            right={() => <Text style={{ color: theme.colors.onSurface }}>{getWindSpeedSymbol()}</Text>}
+            onPress={handleWindSpeedUnitChange}
           />
           
           <Divider />
@@ -160,7 +266,8 @@ export default function SettingsScreen() {
             title="Pressure"
             description="hPa, inHg, or mb"
             left={(props) => <List.Icon {...props} icon="gauge" />}
-            right={() => <Text style={{ color: theme.colors.onSurface }}>hPa</Text>}
+            right={() => <Text style={{ color: theme.colors.onSurface }}>{getPressureSymbol()}</Text>}
+            onPress={handlePressureUnitChange}
           />
         </Card.Content>
       </Card>
@@ -207,27 +314,38 @@ export default function SettingsScreen() {
         </Card.Content>
       </Card>
 
+      {/* Notifications temporarily unavailable (requires paid subscription) */}
+
+
       <Card style={cardStyle}>
         <Card.Content>
           <Text variant="titleLarge" style={sectionTitleStyle}>
-            Notifications
+            Cache Management
           </Text>
           
-          <List.Item
-            title="Weather Alerts"
-            description="Receive severe weather notifications"
-            left={(props) => <List.Icon {...props} icon="alert" />}
-            right={() => <Switch value={true} />}
-          />
+          {cacheInfo && (
+            <View style={styles.cacheInfoContainer}>
+              <Text variant="bodyMedium" style={[styles.cacheInfoText, { color: theme.colors.onSurface }]}>
+                Total Locations: {cacheInfo.totalLocations}
+              </Text>
+              <Text variant="bodyMedium" style={[styles.cacheInfoText, { color: theme.colors.onSurface }]}>
+                Favorite Locations: {cacheInfo.favoriteLocations}
+              </Text>
+              <Text variant="bodyMedium" style={[styles.cacheInfoText, { color: theme.colors.onSurface }]}>
+                Cached Weather: {cacheInfo.cachedWeatherLocations}
+              </Text>
+            </View>
+          )}
           
-          <Divider />
-          
-          <List.Item
-            title="Daily Forecast"
-            description="Get daily weather updates"
-            left={(props) => <List.Icon {...props} icon="calendar-today" />}
-            right={() => <Switch value={false} />}
-          />
+          <Button
+            mode="outlined"
+            onPress={clearExpiredCache}
+            loading={isLoadingCache}
+            disabled={isLoadingCache}
+            style={styles.cacheButton}
+          >
+            Clear Expired Cache
+          </Button>
         </Card.Content>
       </Card>
 
@@ -261,7 +379,7 @@ export default function SettingsScreen() {
         }}
         duration={2000}
       >
-        {error || `Theme changed to ${themeMode}`}
+        {error || `Settings updated`}
       </Snackbar>
     </ScrollView>
   );
@@ -306,5 +424,17 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     opacity: 0.5,
+  },
+  cacheInfoContainer: {
+    marginVertical: 16,
+    padding: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+  },
+  cacheInfoText: {
+    marginBottom: 4,
+  },
+  cacheButton: {
+    marginTop: 8,
   },
 });

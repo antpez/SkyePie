@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
-import { Searchbar, Card, Text, List } from 'react-native-paper';
+import { Searchbar, Card, Text, List, IconButton } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { LocationSearchResult, SearchHistoryItem } from '../../types';
 import { debounce } from '../../utils/helpers';
@@ -10,14 +10,22 @@ interface LocationSearchProps {
   onSearch: (query: string) => Promise<LocationSearchResult[]>;
   searchHistory?: SearchHistoryItem[];
   onClearHistory?: () => void;
+  onHistoryItemPress?: (historyItem: SearchHistoryItem) => void;
+  onAddToFavorites?: (location: LocationSearchResult) => void;
+  onRemoveFromFavorites?: (location: LocationSearchResult) => void;
+  favoriteLocations?: LocationSearchResult[];
   placeholder?: string;
 }
 
-export const LocationSearch: React.FC<LocationSearchProps> = ({
+export const LocationSearch: React.FC<LocationSearchProps> = memo(({
   onLocationSelect,
   onSearch,
   searchHistory = [],
   onClearHistory,
+  onHistoryItemPress,
+  onAddToFavorites,
+  onRemoveFromFavorites,
+  favoriteLocations = [],
   placeholder = 'Enter city or location',
 }) => {
   const { effectiveTheme, theme } = useThemeContext();
@@ -62,21 +70,56 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
   };
 
   const handleHistoryItemPress = (historyItem: SearchHistoryItem) => {
-    // Trigger search with the history item query
-    if (onSearch) {
+    // Use the provided handler or fallback to triggering search
+    if (onHistoryItemPress) {
+      onHistoryItemPress(historyItem);
+    } else if (onSearch) {
       onSearch(historyItem.query);
     }
   };
 
-  const renderSearchResult = ({ item }: { item: LocationSearchResult }) => (
-    <List.Item
-      title={item.name}
-      description={`${item.state ? `${item.state}, ` : ''}${item.country}`}
-      left={(props) => <List.Icon {...props} icon="map-marker" />}
-      onPress={() => handleLocationSelect(item)}
-      style={styles.resultItem}
-    />
-  );
+  // Check if a location is in favorites
+  const isFavorite = (location: LocationSearchResult): boolean => {
+    return favoriteLocations.some(fav => 
+      Math.abs(fav.latitude - location.latitude) < 0.0001 &&
+      Math.abs(fav.longitude - location.longitude) < 0.0001
+    );
+  };
+
+  // Handle favorite toggle
+  const handleFavoriteToggle = (location: LocationSearchResult) => {
+    if (isFavorite(location)) {
+      onRemoveFromFavorites?.(location);
+    } else {
+      onAddToFavorites?.(location);
+    }
+  };
+
+  const renderSearchResult = ({ item }: { item: LocationSearchResult }) => {
+    const isItemFavorite = isFavorite(item);
+    
+    return (
+      <List.Item
+        title={item.name}
+        description={`${item.state ? `${item.state}, ` : ''}${item.country}`}
+        left={(props) => <List.Icon {...props} icon="map-marker" />}
+        right={(props) => (
+          <View style={styles.resultActions}>
+            {(onAddToFavorites || onRemoveFromFavorites) && (
+              <IconButton
+                icon={isItemFavorite ? "heart" : "heart-outline"}
+                iconColor={isItemFavorite ? theme.colors.error : theme.colors.primary}
+                size={20}
+                onPress={() => handleFavoriteToggle(item)}
+              />
+            )}
+          </View>
+        )}
+        onPress={() => handleLocationSelect(item)}
+        style={styles.resultItem}
+      />
+    );
+  };
 
   const renderHistoryItem = ({ item }: { item: SearchHistoryItem }) => (
     <List.Item
@@ -141,7 +184,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -179,7 +222,13 @@ const styles = StyleSheet.create({
   resultItem: {
     paddingHorizontal: 16,
   },
+  resultActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   historyItem: {
     paddingHorizontal: 16,
   },
 });
+
+LocationSearch.displayName = 'LocationSearch';

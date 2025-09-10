@@ -9,7 +9,7 @@ interface ThemeContextType {
   isLoading: boolean;
   setTheme: (mode: ThemeMode) => Promise<void>;
   toggleTheme: () => void;
-  theme: typeof lightTheme;
+  theme: typeof lightTheme | typeof darkTheme;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
