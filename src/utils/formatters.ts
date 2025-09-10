@@ -6,29 +6,88 @@ import {
   convertAndFormatDistance 
 } from './unitConversions';
 
+// Cache for expensive computations
+const formatCache = new Map<string, string>();
+const CACHE_SIZE_LIMIT = 1000;
+
+// Helper function to create cache keys
+const createCacheKey = (prefix: string, value: number, unit: string): string => 
+  `${prefix}:${value}:${unit}`;
+
+// Helper function to manage cache size
+const manageCacheSize = () => {
+  if (formatCache.size > CACHE_SIZE_LIMIT) {
+    const entries = Array.from(formatCache.entries());
+    // Remove oldest 25% of entries
+    const toRemove = entries.slice(0, Math.floor(entries.length * 0.25));
+    toRemove.forEach(([key]) => formatCache.delete(key));
+  }
+};
+
 export const formatTemperature = (temp: number, unit: TemperatureUnit = 'celsius'): string => {
-  return convertAndFormatTemperature(temp, 'celsius', unit);
+  const cacheKey = createCacheKey('temp', temp, unit);
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey)!;
+  }
+  
+  const result = convertAndFormatTemperature(temp, 'celsius', unit);
+  formatCache.set(cacheKey, result);
+  manageCacheSize();
+  return result;
 };
 
 export const formatWindSpeed = (speed: number, unit: WindSpeedUnit = 'kmh'): string => {
-  return convertAndFormatWindSpeed(speed, 'ms', unit);
+  const cacheKey = createCacheKey('wind', speed, unit);
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey)!;
+  }
+  
+  const result = convertAndFormatWindSpeed(speed, 'ms', unit);
+  formatCache.set(cacheKey, result);
+  manageCacheSize();
+  return result;
 };
 
 export const formatPressure = (pressure: number, unit: PressureUnit = 'hpa'): string => {
-  return convertAndFormatPressure(pressure, 'hpa', unit);
+  const cacheKey = createCacheKey('pressure', pressure, unit);
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey)!;
+  }
+  
+  const result = convertAndFormatPressure(pressure, 'hpa', unit);
+  formatCache.set(cacheKey, result);
+  manageCacheSize();
+  return result;
 };
 
 export const formatHumidity = (humidity: number): string => {
+  // Simple string concatenation, no need to cache
   return `${humidity}%`;
 };
 
 export const formatDistance = (distance: number, unit: DistanceUnit = 'km'): string => {
-  return convertAndFormatDistance(distance, 'km', unit);
+  const cacheKey = createCacheKey('distance', distance, unit);
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey)!;
+  }
+  
+  const result = convertAndFormatDistance(distance, 'km', unit);
+  formatCache.set(cacheKey, result);
+  manageCacheSize();
+  return result;
 };
 
 export const formatVisibility = (visibility: number, unit: DistanceUnit = 'km'): string => {
   const km = visibility / 1000;
-  return convertAndFormatDistance(km, 'km', unit);
+  const cacheKey = createCacheKey('visibility', km, unit);
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey)!;
+  }
+  
+  const result = convertAndFormatDistance(km, 'km', unit);
+  formatCache.set(cacheKey, result);
+  manageCacheSize();
+  return result;
 };
 
 export const formatUVIndex = (uvIndex: number): string => {
@@ -42,45 +101,81 @@ export const formatWindDirection = (degrees: number): string => {
 };
 
 export const formatTime = (timestamp: number, timezone?: number): string => {
+  const cacheKey = createCacheKey('time', timestamp, timezone?.toString() || 'local');
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey)!;
+  }
+
   const date = new Date(timestamp * 1000);
+  let result: string;
+  
   if (timezone) {
     // timezone is in seconds offset from UTC
     // Create a new date with the timezone offset applied
     const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
     const localTime = new Date(utcTime + (timezone * 1000));
-    return localTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    result = localTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else {
+    result = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  formatCache.set(cacheKey, result);
+  manageCacheSize();
+  return result;
 };
 
 export const formatDate = (timestamp: number, timezone?: number): string => {
+  const cacheKey = createCacheKey('date', timestamp, timezone?.toString() || 'local');
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey)!;
+  }
+
   const date = new Date(timestamp * 1000);
+  let result: string;
+  
   if (timezone) {
     // timezone is in seconds offset from UTC
     const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
     const localTime = new Date(utcTime + (timezone * 1000));
-    return localTime.toLocaleDateString([], { 
+    result = localTime.toLocaleDateString([], { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  } else {
+    result = date.toLocaleDateString([], { 
       weekday: 'short', 
       month: 'short', 
       day: 'numeric' 
     });
   }
-  return date.toLocaleDateString([], { 
-    weekday: 'short', 
-    month: 'short', 
-    day: 'numeric' 
-  });
+  
+  formatCache.set(cacheKey, result);
+  manageCacheSize();
+  return result;
 };
 
 export const formatDayOfWeek = (timestamp: number, timezone?: number): string => {
+  const cacheKey = createCacheKey('day', timestamp, timezone?.toString() || 'local');
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey)!;
+  }
+
   const date = new Date(timestamp * 1000);
+  let result: string;
+  
   if (timezone) {
     // timezone is in seconds offset from UTC
     const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
     const localTime = new Date(utcTime + (timezone * 1000));
-    return localTime.toLocaleDateString([], { weekday: 'short' });
+    result = localTime.toLocaleDateString([], { weekday: 'short' });
+  } else {
+    result = date.toLocaleDateString([], { weekday: 'short' });
   }
-  return date.toLocaleDateString([], { weekday: 'short' });
+  
+  formatCache.set(cacheKey, result);
+  manageCacheSize();
+  return result;
 };
 
 

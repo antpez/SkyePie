@@ -5,32 +5,39 @@
 
 // Import all weather icons statically
 const weatherIcons = {
-  'clear_night.png': require('@/assets/images/weather-icons/clear_night.png'),
-  'clearing.png': require('@/assets/images/weather-icons/clearing.png'),
-  'cloudy_night_full.png': require('@/assets/images/weather-icons/cloudy_night_full.png'),
-  'cloudy_night_half.png': require('@/assets/images/weather-icons/cloudy_night_half.png'),
-  'cloudy.png': require('@/assets/images/weather-icons/cloudy.png'),
-  'cloudy1.png': require('@/assets/images/weather-icons/cloudy1.png'),
-  'danger.png': require('@/assets/images/weather-icons/danger.png'),
-  'evening.png': require('@/assets/images/weather-icons/evening.png'),
-  'extreme_heat.png': require('@/assets/images/weather-icons/extreme_heat.png'),
-  'full_clear_night.png': require('@/assets/images/weather-icons/full_clear_night.png'),
-  'full_moon.png': require('@/assets/images/weather-icons/full_moon.png'),
-  'half_moon.png': require('@/assets/images/weather-icons/half_moon.png'),
-  'heavy_storm.png': require('@/assets/images/weather-icons/heavy_storm.png'),
-  'light_cloudy.png': require('@/assets/images/weather-icons/light_cloudy.png'),
-  'light_rain.png': require('@/assets/images/weather-icons/light_rain.png'),
-  'partly_cloudy.png': require('@/assets/images/weather-icons/partly_cloudy.png'),
-  'rain_passing.png': require('@/assets/images/weather-icons/rain_passing.png'),
-  'rain.png': require('@/assets/images/weather-icons/rain.png'),
-  'storm1.png': require('@/assets/images/weather-icons/storm1.png'),
-  'sunny.png': require('@/assets/images/weather-icons/sunny.png'),
-  'sunrise.png': require('@/assets/images/weather-icons/sunrise.png'),
-  'sunset.png': require('@/assets/images/weather-icons/sunset.png'),
-  'very_hot.png': require('@/assets/images/weather-icons/very_hot.png'),
-  'very_windy.png': require('@/assets/images/weather-icons/very_windy.png'),
-  'windy.png': require('@/assets/images/weather-icons/windy.png'),
+  'clear_night.png': require('../../assets/images/weather-icons/clear_night.png'),
+  'clearing.png': require('../../assets/images/weather-icons/clearing.png'),
+  'cloudy_night_full.png': require('../../assets/images/weather-icons/cloudy_night_full.png'),
+  'cloudy_night_half.png': require('../../assets/images/weather-icons/cloudy_night_half.png'),
+  'cloudy.png': require('../../assets/images/weather-icons/cloudy.png'),
+  'cloudy1.png': require('../../assets/images/weather-icons/cloudy1.png'),
+  'danger.png': require('../../assets/images/weather-icons/danger.png'),
+  'evening.png': require('../../assets/images/weather-icons/evening.png'),
+  'extreme_heat.png': require('../../assets/images/weather-icons/extreme_heat.png'),
+  'full_clear_night.png': require('../../assets/images/weather-icons/full_clear_night.png'),
+  'full_moon.png': require('../../assets/images/weather-icons/full_moon.png'),
+  'half_moon.png': require('../../assets/images/weather-icons/half_moon.png'),
+  'heavy_storm.png': require('../../assets/images/weather-icons/heavy_storm.png'),
+  'light_cloudy.png': require('../../assets/images/weather-icons/light_cloudy.png'),
+  'light_rain.png': require('../../assets/images/weather-icons/light_rain.png'),
+  'partly_cloudy.png': require('../../assets/images/weather-icons/partly_cloudy.png'),
+  'rain_passing.png': require('../../assets/images/weather-icons/rain_passing.png'),
+  'rain.png': require('../../assets/images/weather-icons/rain.png'),
+  'storm1.png': require('../../assets/images/weather-icons/storm1.png'),
+  'sunny.png': require('../../assets/images/weather-icons/sunny.png'),
+  'sunrise.png': require('../../assets/images/weather-icons/sunrise.png'),
+  'sunset.png': require('../../assets/images/weather-icons/sunset.png'),
+  'very_hot.png': require('../../assets/images/weather-icons/very_hot.png'),
+  'very_windy.png': require('../../assets/images/weather-icons/very_windy.png'),
+  'windy.png': require('../../assets/images/weather-icons/windy.png'),
 };
+
+// Debug: Log what the require statements are returning
+console.log('WeatherIcons debug:', {
+  'clear_night.png': weatherIcons['clear_night.png'],
+  'sunny.png': weatherIcons['sunny.png'],
+  'cloudy_night_half.png': weatherIcons['cloudy_night_half.png'],
+});
 
 export interface WeatherIconMapping {
   [key: string]: string;
@@ -80,7 +87,10 @@ export const WEATHER_ICON_MAPPING: WeatherIconMapping = {
  * @param iconCode - OpenWeatherMap icon code (e.g., '01d', '02n')
  * @returns The filename of the custom weather icon
  */
-export const getWeatherIconFilename = (iconCode: string): string => {
+export const getWeatherIconFilename = (iconCode: string | undefined | null): string => {
+  if (!iconCode) {
+    return 'sunny.png'; // Default to sunny if no icon code provided
+  }
   return WEATHER_ICON_MAPPING[iconCode] || 'sunny.png'; // Default to sunny if not found
 };
 
@@ -89,7 +99,22 @@ export const getWeatherIconFilename = (iconCode: string): string => {
  * @param iconCode - OpenWeatherMap icon code
  * @returns The weather icon asset
  */
-export const getWeatherIconPath = (iconCode: string): any => {
+export const getWeatherIconPath = (iconCode: string | undefined | null): any => {
+  if (!iconCode) {
+    console.log('getWeatherIconPath: No icon code, using sunny.png');
+    return weatherIcons['sunny.png']; // Default to sunny if no icon code provided
+  }
+  
   const filename = getWeatherIconFilename(iconCode);
-  return weatherIcons[filename as keyof typeof weatherIcons] || weatherIcons['sunny.png']; // Default to sunny if not found
+  console.log(`getWeatherIconPath: Looking for filename: ${filename}`);
+  
+  const iconAsset = weatherIcons[filename as keyof typeof weatherIcons];
+  console.log(`getWeatherIconPath: Found asset:`, iconAsset, 'type:', typeof iconAsset);
+  
+  if (!iconAsset) {
+    console.warn(`WeatherIcon: Icon asset not found for filename: ${filename}, using sunny.png as fallback`);
+    return weatherIcons['sunny.png'];
+  }
+  
+  return iconAsset;
 };

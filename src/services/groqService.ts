@@ -8,8 +8,8 @@ export class GroqService {
   private baseUrl: string;
 
   constructor() {
-    this.apiKey = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
-    this.baseUrl = 'https://api.groq.com/openai/v1';
+    this.apiKey = APP_CONFIG.api.groq.apiKey;
+    this.baseUrl = APP_CONFIG.api.groq.baseUrl;
   }
 
   static getInstance(): GroqService {
@@ -17,6 +17,67 @@ export class GroqService {
       GroqService.instance = new GroqService();
     }
     return GroqService.instance;
+  }
+
+  private cleanJsonResponse(response: string): string {
+    // Handle empty or null responses
+    if (!response || response.trim().length === 0) {
+      return '[]';
+    }
+    
+    // Remove any text before the first [ or {
+    let cleaned = response.trim();
+    
+    // Find the first JSON array or object
+    const arrayStart = cleaned.indexOf('[');
+    const objectStart = cleaned.indexOf('{');
+    
+    if (arrayStart !== -1 && (objectStart === -1 || arrayStart < objectStart)) {
+      // Find the matching closing bracket
+      let bracketCount = 0;
+      let endIndex = arrayStart;
+      for (let i = arrayStart; i < cleaned.length; i++) {
+        if (cleaned[i] === '[') bracketCount++;
+        if (cleaned[i] === ']') bracketCount--;
+        if (bracketCount === 0) {
+          endIndex = i;
+          break;
+        }
+      }
+      cleaned = cleaned.substring(arrayStart, endIndex + 1);
+    } else if (objectStart !== -1) {
+      // Find the matching closing brace
+      let braceCount = 0;
+      let endIndex = objectStart;
+      for (let i = objectStart; i < cleaned.length; i++) {
+        if (cleaned[i] === '{') braceCount++;
+        if (cleaned[i] === '}') braceCount--;
+        if (braceCount === 0) {
+          endIndex = i;
+          break;
+        }
+      }
+      cleaned = cleaned.substring(objectStart, endIndex + 1);
+    }
+    
+    // Remove any trailing text after JSON
+    cleaned = cleaned.trim();
+    
+    // If it doesn't start with [ or {, try to extract JSON from markdown code blocks
+    if (!cleaned.startsWith('[') && !cleaned.startsWith('{')) {
+      const codeBlockMatch = cleaned.match(/```(?:json)?\s*(\[.*?\]|\{.*?\})\s*```/s);
+      if (codeBlockMatch) {
+        cleaned = codeBlockMatch[1];
+      }
+    }
+    
+    // If still no valid JSON found, return empty array
+    if (!cleaned.startsWith('[') && !cleaned.startsWith('{')) {
+      console.warn('No valid JSON found in AI response:', response);
+      return '[]';
+    }
+    
+    return cleaned;
   }
 
   private async makeAPICall(prompt: string, systemPrompt?: string): Promise<string> {
@@ -76,7 +137,14 @@ export class GroqService {
     forecast: WeatherForecast, 
     userPrefs: UserPreferences
   ): Promise<ClothingRecommendation[]> {
+    // If not configured, return fallback immediately
+    if (!this.isConfigured()) {
+      console.log('Groq API not configured, using fallback recommendations');
+      return this.getFallbackClothingRecommendations(weather);
+    }
+
     const systemPrompt = `You are a weather fashion expert. Analyze weather data and provide specific clothing recommendations. 
+    IMPORTANT: Return ONLY a valid JSON array. Do not include any text before or after the JSON.
     Return your response as a JSON array of clothing recommendations with this exact structure:
     [{"category": "top|bottom|outerwear|accessories|footwear", "item": "specific item name", "reason": "why this item is recommended", "priority": "essential|recommended|optional"}]`;
 
@@ -86,9 +154,23 @@ export class GroqService {
     
     Provide 5-8 specific clothing recommendations for this weather.`;
 
+    let response: string = '';
     try {
-      const response = await this.makeAPICall(prompt, systemPrompt);
-      const recommendations = JSON.parse(response);
+      response = await this.makeAPICall(prompt, systemPrompt);
+      const cleanedResponse = this.cleanJsonResponse(response);
+      
+      // Validate JSON before parsing
+      if (!cleanedResponse || cleanedResponse.trim() === '') {
+        throw new Error('Empty response from AI');
+      }
+      
+      const recommendations = JSON.parse(cleanedResponse);
+      
+      // Validate response structure
+      if (!Array.isArray(recommendations)) {
+        throw new Error('AI response is not an array');
+      }
+      
       return recommendations.map((rec: any) => ({
         category: rec.category as ClothingRecommendation['category'],
         item: rec.item,
@@ -97,6 +179,9 @@ export class GroqService {
       }));
     } catch (error) {
       console.error('Failed to generate clothing recommendations:', error);
+      if (error instanceof SyntaxError) {
+        console.error('JSON Parse Error - Raw response:', response);
+      }
       return this.getFallbackClothingRecommendations(weather);
     }
   }
@@ -105,7 +190,14 @@ export class GroqService {
     weather: CurrentWeather, 
     userPrefs: UserPreferences
   ): Promise<ActivityRecommendation[]> {
+    // If not configured, return fallback immediately
+    if (!this.isConfigured()) {
+      console.log('Groq API not configured, using fallback recommendations');
+      return this.getFallbackActivityRecommendations(weather);
+    }
+
     const systemPrompt = `You are a weather activity expert. Suggest activities based on weather conditions and user preferences.
+    IMPORTANT: Return ONLY a valid JSON array. Do not include any text before or after the JSON.
     Return your response as a JSON array of activity recommendations with this exact structure:
     [{"activity": "activity name", "suitability": "excellent|good|fair|poor", "reason": "why this activity is suitable", "duration": "suggested duration", "location": "indoor|outdoor|both", "equipment": ["item1", "item2"]}]`;
 
@@ -114,9 +206,23 @@ export class GroqService {
     
     Suggest 6-10 activities suitable for this weather.`;
 
+    let response: string = '';
     try {
-      const response = await this.makeAPICall(prompt, systemPrompt);
-      const recommendations = JSON.parse(response);
+      response = await this.makeAPICall(prompt, systemPrompt);
+      const cleanedResponse = this.cleanJsonResponse(response);
+      
+      // Validate JSON before parsing
+      if (!cleanedResponse || cleanedResponse.trim() === '') {
+        throw new Error('Empty response from AI');
+      }
+      
+      const recommendations = JSON.parse(cleanedResponse);
+      
+      // Validate response structure
+      if (!Array.isArray(recommendations)) {
+        throw new Error('AI response is not an array');
+      }
+      
       return recommendations.map((rec: any) => ({
         activity: rec.activity,
         suitability: rec.suitability as ActivityRecommendation['suitability'],
@@ -127,6 +233,9 @@ export class GroqService {
       }));
     } catch (error) {
       console.error('Failed to generate activity recommendations:', error);
+      if (error instanceof SyntaxError) {
+        console.error('JSON Parse Error - Raw response:', response);
+      }
       return this.getFallbackActivityRecommendations(weather);
     }
   }
@@ -136,7 +245,14 @@ export class GroqService {
     forecast: WeatherForecast, 
     userPrefs: UserPreferences
   ): Promise<PersonalizedInsight[]> {
+    // If not configured, return fallback immediately
+    if (!this.isConfigured()) {
+      console.log('Groq API not configured, using fallback insights');
+      return this.getFallbackInsights(weather);
+    }
+
     const systemPrompt = `You are a personalized weather assistant. Generate helpful, personalized weather insights.
+    IMPORTANT: Return ONLY a valid JSON array. Do not include any text before or after the JSON.
     Return your response as a JSON array of insights with this exact structure:
     [{"type": "clothing|activity|pattern|mood|health|general", "title": "insight title", "message": "detailed message", "priority": "low|medium|high"}]`;
 
@@ -147,9 +263,23 @@ export class GroqService {
     
     Generate 3-5 personalized insights for this user and weather.`;
 
+    let response: string = '';
     try {
-      const response = await this.makeAPICall(prompt, systemPrompt);
-      const insights = JSON.parse(response);
+      response = await this.makeAPICall(prompt, systemPrompt);
+      const cleanedResponse = this.cleanJsonResponse(response);
+      
+      // Validate JSON before parsing
+      if (!cleanedResponse || cleanedResponse.trim() === '') {
+        throw new Error('Empty response from AI');
+      }
+      
+      const insights = JSON.parse(cleanedResponse);
+      
+      // Validate response structure
+      if (!Array.isArray(insights)) {
+        throw new Error('AI response is not an array');
+      }
+      
       return insights.map((insight: any) => ({
         id: `ai_insight_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: insight.type as PersonalizedInsight['type'],
@@ -161,6 +291,9 @@ export class GroqService {
       }));
     } catch (error) {
       console.error('Failed to generate personalized insights:', error);
+      if (error instanceof SyntaxError) {
+        console.error('JSON Parse Error - Raw response:', response);
+      }
       return this.getFallbackInsights(weather);
     }
   }

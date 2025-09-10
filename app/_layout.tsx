@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { Provider as ReduxProvider } from 'react-redux';
@@ -10,9 +10,26 @@ import { UnitsProvider } from '../src/contexts/UnitsContext';
 import { AccessibilityProvider } from '../src/contexts/AccessibilityContext';
 import { WeatherMapsProvider } from '../src/contexts/WeatherMapsContext';
 import { store } from '../src/store';
+import { imageOptimizer } from '../src/utils/imageOptimizer';
+import { performanceMonitor } from '../src/utils/performanceMonitor';
 
 function AppContent() {
   const { effectiveTheme, theme } = useThemeContext();
+
+  // Initialize performance optimizations
+  useEffect(() => {
+    // Skip image preloading for now due to require() issues
+    // imageOptimizer.preloadWeatherIcons().catch((error) => {
+    //   console.warn('Failed to preload weather icons:', error);
+    // });
+    
+    // Start performance monitoring
+    performanceMonitor.startTiming('app_initialization');
+    
+    return () => {
+      performanceMonitor.endTiming('app_initialization');
+    };
+  }, []);
 
   return (
     <PaperProvider theme={theme} key={effectiveTheme}>

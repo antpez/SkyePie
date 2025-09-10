@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Text, Chip, IconButton, Divider } from 'react-native-paper';
+import { Text, Chip, IconButton, Divider } from 'react-native-paper';
 import { PersonalizedInsight } from '../../types/ai';
 import { useThemeContext } from '../../contexts/ThemeContext';
+import { ConsistentCard } from '../common';
 
 interface AIInsightsCardProps {
   insights: PersonalizedInsight[];
@@ -14,21 +15,6 @@ export const AIInsightsCard: React.FC<AIInsightsCardProps> = React.memo(({
   onDismissInsight
 }) => {
   const { theme } = useThemeContext();
-
-  const cardStyle = [
-    styles.card,
-    { backgroundColor: theme.colors.surface }
-  ];
-
-  const titleStyle = [
-    styles.title,
-    { color: theme.colors.onSurface }
-  ];
-
-  const subtitleStyle = [
-    styles.subtitle,
-    { color: theme.colors.onSurfaceVariant }
-  ];
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -63,136 +49,162 @@ export const AIInsightsCard: React.FC<AIInsightsCardProps> = React.memo(({
 
   if (insights.length === 0) {
     return (
-      <Card style={cardStyle}>
-        <Card.Content>
-          <Text variant="titleLarge" style={titleStyle}>
-            AI Insights
-          </Text>
-          <Text variant="bodyMedium" style={subtitleStyle}>
-            No personalized insights available at the moment.
-          </Text>
-        </Card.Content>
-      </Card>
+      <ConsistentCard>
+        <Text variant="titleLarge" style={[styles.title, { color: theme.colors.onSurface }]}>
+          🤖 AI Insights
+        </Text>
+        <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+          No personalized insights available at the moment.
+        </Text>
+        <Text variant="bodySmall" style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
+          AI will analyze weather patterns and provide personalized recommendations soon.
+        </Text>
+      </ConsistentCard>
     );
   }
 
   return (
-    <Card style={cardStyle}>
-      <Card.Content>
-        <Text variant="titleLarge" style={titleStyle}>
-          AI Insights
-        </Text>
-        <Text variant="bodyMedium" style={subtitleStyle}>
-          Personalized recommendations based on current weather
-        </Text>
+    <ConsistentCard>
+      <Text variant="titleLarge" style={[styles.title, { color: theme.colors.onSurface }]}>
+        🤖 AI Insights
+      </Text>
+      <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+        Personalized recommendations based on current weather patterns
+      </Text>
 
-        <ScrollView style={styles.insightsContainer} showsVerticalScrollIndicator={false}>
-          {insights.map((insight) => (
-            <View key={insight.id} style={styles.insightItem}>
-              <View style={styles.insightHeader}>
-                <View style={styles.insightTitleContainer}>
-                  <View style={[styles.typeIcon, { backgroundColor: getTypeColor(insight.type) }]}>
-                    <Text style={styles.typeIconText}>
-                      {getTypeIcon(insight.type)}
-                    </Text>
-                  </View>
-                  <View style={styles.insightTextContainer}>
-                    <Text variant="titleMedium" style={[styles.insightTitle, { color: theme.colors.onSurface }]}>
-                      {insight.title}
-                    </Text>
-                    <Text variant="bodyMedium" style={[styles.insightMessage, { color: theme.colors.onSurfaceVariant }]}>
-                      {insight.message}
-                    </Text>
-                  </View>
+      <ScrollView style={styles.insightsContainer} showsVerticalScrollIndicator={false}>
+        {insights.map((insight) => (
+          <View 
+            key={insight.id} 
+            style={[styles.insightItem, { backgroundColor: theme.colors.surfaceVariant + '20' }]}
+            accessible={true}
+            accessibilityLabel={`${insight.title}, ${insight.priority} priority, ${insight.message}`}
+            accessibilityRole="button"
+          >
+            <View style={styles.insightHeader}>
+              <View style={styles.insightTitleContainer}>
+                <View style={[styles.typeIcon, { backgroundColor: getTypeColor(insight.type) }]}>
+                  <Text style={styles.typeIconText}>
+                    {getTypeIcon(insight.type)}
+                  </Text>
                 </View>
-                <View style={styles.insightActions}>
-                  <Chip 
-                    style={[styles.priorityChip, { backgroundColor: getPriorityColor(insight.priority) }]}
-                    textStyle={styles.priorityText}
-                  >
-                    {insight.priority}
-                  </Chip>
-                  {onDismissInsight && (
-                    <IconButton
-                      icon="close"
-                      size={16}
-                      onPress={() => onDismissInsight(insight.id)}
-                    />
-                  )}
+                <View style={styles.insightTextContainer}>
+                  <Text variant="titleMedium" style={[styles.insightTitle, { color: theme.colors.onSurface }]}>
+                    {insight.title}
+                  </Text>
+                  <Text variant="bodyMedium" style={[styles.insightMessage, { color: theme.colors.onSurfaceVariant }]}>
+                    {insight.message}
+                  </Text>
                 </View>
               </View>
-              <Divider style={styles.insightDivider} />
+              <View style={styles.insightActions}>
+                <Chip 
+                  style={[styles.priorityChip, { backgroundColor: getPriorityColor(insight.priority) }]}
+                  textStyle={styles.priorityText}
+                  accessible={true}
+                  accessibilityLabel={`${insight.priority} priority`}
+                >
+                  {insight.priority}
+                </Chip>
+                {onDismissInsight && (
+                  <IconButton
+                    icon="close"
+                    size={16}
+                    onPress={() => onDismissInsight(insight.id)}
+                    accessible={true}
+                    accessibilityLabel={`Dismiss ${insight.title} insight`}
+                  />
+                )}
+              </View>
             </View>
-          ))}
-        </ScrollView>
-      </Card.Content>
-    </Card>
+            <Divider style={[styles.insightDivider, { backgroundColor: theme.colors.outline }]} />
+          </View>
+        ))}
+      </ScrollView>
+    </ConsistentCard>
   );
 });
 
 AIInsightsCard.displayName = 'AIInsightsCard';
 
 const styles = StyleSheet.create({
-  card: {
-    margin: 16,
-    elevation: 2,
-  },
   title: {
     marginBottom: 4,
+    fontWeight: 'bold',
   },
   subtitle: {
+    marginBottom: 8,
+  },
+  emptySubtext: {
     marginBottom: 16,
+    lineHeight: 20,
+    fontSize: 14,
   },
   insightsContainer: {
     maxHeight: 300,
   },
   insightItem: {
-    marginBottom: 8,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    minHeight: 80,
   },
   insightHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginBottom: 8,
   },
   insightTitleContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flex: 1,
+    marginRight: 12,
   },
   typeIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    marginTop: 4,
   },
   typeIconText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   insightTextContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
   insightTitle: {
     marginBottom: 4,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   insightMessage: {
     lineHeight: 20,
+    fontSize: 14,
   },
   insightActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   priorityChip: {
-    height: 24,
-    marginRight: 4,
+    height: 28,
+    minWidth: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   priorityText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   insightDivider: {
     marginTop: 8,

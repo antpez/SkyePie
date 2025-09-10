@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Text, Chip, Divider } from 'react-native-paper';
+import { Text, Chip, Divider } from 'react-native-paper';
 import { ClothingRecommendation } from '../../types/ai';
 import { useThemeContext } from '../../contexts/ThemeContext';
+import { ConsistentCard } from '../common';
 
 interface ClothingRecommendationsCardProps {
   recommendations: ClothingRecommendation[];
@@ -12,21 +13,6 @@ export const ClothingRecommendationsCard: React.FC<ClothingRecommendationsCardPr
   recommendations
 }) => {
   const { theme } = useThemeContext();
-
-  const cardStyle = [
-    styles.card,
-    { backgroundColor: theme.colors.surface }
-  ];
-
-  const titleStyle = [
-    styles.title,
-    { color: theme.colors.onSurface }
-  ];
-
-  const subtitleStyle = [
-    styles.subtitle,
-    { color: theme.colors.onSurfaceVariant }
-  ];
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -62,78 +48,87 @@ export const ClothingRecommendationsCard: React.FC<ClothingRecommendationsCardPr
 
   if (recommendations.length === 0) {
     return (
-      <Card style={cardStyle}>
-        <Card.Content>
-          <Text variant="titleLarge" style={titleStyle}>
-            Clothing Recommendations
-          </Text>
-          <Text variant="bodyMedium" style={subtitleStyle}>
-            No clothing recommendations available.
-          </Text>
-        </Card.Content>
-      </Card>
+      <ConsistentCard>
+        <Text variant="titleLarge" style={[styles.title, { color: theme.colors.onSurface }]}>
+          👕 Clothing Recommendations
+        </Text>
+        <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+          No clothing recommendations available at the moment.
+        </Text>
+        <Text variant="bodySmall" style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
+          Check back when weather conditions change for personalized suggestions.
+        </Text>
+      </ConsistentCard>
     );
   }
 
   return (
-    <Card style={cardStyle}>
-      <Card.Content>
-        <Text variant="titleLarge" style={titleStyle}>
-          Clothing Recommendations
-        </Text>
-        <Text variant="bodyMedium" style={subtitleStyle}>
-          Smart suggestions based on current weather
-        </Text>
+    <ConsistentCard>
+      <Text variant="titleLarge" style={[styles.title, { color: theme.colors.onSurface }]}>
+        👕 Clothing Recommendations
+      </Text>
+      <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+        Smart suggestions based on current weather conditions
+      </Text>
 
-        <ScrollView style={styles.recommendationsContainer} showsVerticalScrollIndicator={false}>
-          {Object.entries(groupedRecommendations).map(([category, items]) => (
-            <View key={category} style={styles.categorySection}>
-              <View style={styles.categoryHeader}>
-                <Text variant="titleMedium" style={[styles.categoryTitle, { color: theme.colors.onSurface }]}>
-                  {getCategoryIcon(category)} {category.charAt(0).toUpperCase() + category.slice(1)}
-                </Text>
-              </View>
-              
-              {items.map((item, index) => (
-                <View key={index} style={styles.recommendationItem}>
-                  <View style={styles.recommendationContent}>
-                    <Text variant="bodyMedium" style={[styles.itemName, { color: theme.colors.onSurface }]}>
-                      {item.item}
-                    </Text>
-                    <Text variant="bodySmall" style={[styles.itemReason, { color: theme.colors.onSurfaceVariant }]}>
-                      {item.reason}
-                    </Text>
-                  </View>
-                  <Chip 
-                    style={[styles.priorityChip, { backgroundColor: getPriorityColor(item.priority) }]}
-                    textStyle={styles.priorityText}
-                  >
-                    {item.priority}
-                  </Chip>
-                </View>
-              ))}
-              
-              <Divider style={styles.categoryDivider} />
+      <ScrollView style={styles.recommendationsContainer} showsVerticalScrollIndicator={false}>
+        {Object.entries(groupedRecommendations).map(([category, items]) => (
+          <View key={category} style={styles.categorySection}>
+            <View style={styles.categoryHeader}>
+              <Text variant="titleMedium" style={[styles.categoryTitle, { color: theme.colors.onSurface }]}>
+                {getCategoryIcon(category)} {category.charAt(0).toUpperCase() + category.slice(1)}
+              </Text>
             </View>
-          ))}
-        </ScrollView>
-      </Card.Content>
-    </Card>
+            
+            {items.map((item, index) => (
+              <View 
+                key={index} 
+                style={[styles.recommendationItem, { backgroundColor: theme.colors.surfaceVariant + '20' }]}
+                accessible={true}
+                accessibilityLabel={`${item.item}, ${item.priority} priority, ${item.reason}`}
+                accessibilityRole="button"
+              >
+                <View style={styles.recommendationContent}>
+                  <Text variant="bodyMedium" style={[styles.itemName, { color: theme.colors.onSurface }]}>
+                    {item.item}
+                  </Text>
+                  <Text variant="bodySmall" style={[styles.itemReason, { color: theme.colors.onSurfaceVariant }]}>
+                    {item.reason}
+                  </Text>
+                </View>
+                <Chip 
+                  style={[styles.priorityChip, { backgroundColor: getPriorityColor(item.priority) }]}
+                  textStyle={styles.priorityText}
+                  accessible={true}
+                  accessibilityLabel={`${item.priority} priority`}
+                >
+                  {item.priority}
+                </Chip>
+              </View>
+            ))}
+            
+            <Divider style={[styles.categoryDivider, { backgroundColor: theme.colors.outline }]} />
+          </View>
+        ))}
+      </ScrollView>
+    </ConsistentCard>
   );
 });
 
 ClothingRecommendationsCard.displayName = 'ClothingRecommendationsCard';
 
 const styles = StyleSheet.create({
-  card: {
-    margin: 16,
-    elevation: 2,
-  },
   title: {
     marginBottom: 4,
+    fontWeight: 'bold',
   },
   subtitle: {
+    marginBottom: 8,
+  },
+  emptySubtext: {
     marginBottom: 16,
+    lineHeight: 20,
+    fontSize: 14,
   },
   recommendationsContainer: {
     maxHeight: 400,
@@ -150,30 +145,39 @@ const styles = StyleSheet.create({
   recommendationItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 8,
-    padding: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    padding: 12,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    minHeight: 60,
   },
   recommendationContent: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 12,
+    justifyContent: 'center',
   },
   itemName: {
     fontWeight: '500',
-    marginBottom: 2,
+    marginBottom: 4,
+    fontSize: 16,
   },
   itemReason: {
-    lineHeight: 16,
+    lineHeight: 18,
+    fontSize: 14,
   },
   priorityChip: {
-    height: 24,
+    height: 28,
+    minWidth: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   priorityText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   categoryDivider: {
     marginTop: 8,

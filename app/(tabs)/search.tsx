@@ -127,8 +127,9 @@ export default function SearchScreen() {
     try {
       await offlineCacheService.clearSearchHistory(userId);
       setSearchHistory([]);
-      setSnackbarVisible(true);
       setError(null);
+      setSuccessMessage('Search history cleared');
+      setSnackbarVisible(true);
     } catch (error) {
       console.error('Error clearing search history:', error);
       setError('Failed to clear search history');
@@ -171,14 +172,14 @@ export default function SearchScreen() {
       // Refresh favorite locations list
       await loadFavoriteLocations();
       setError(null);
-      setSuccessMessage('Added to favorites!');
+      setSuccessMessage(`Added ${location.name} to favorites!`);
       setSnackbarVisible(true);
     } catch (error) {
       console.error('Error adding to favorites:', error);
       setError('Failed to add to favorites');
       setSnackbarVisible(true);
     }
-  }, [userId]);
+  }, [userId, loadFavoriteLocations]);
 
   const handleRemoveFromFavorites = useCallback(async (location: LocationSearchResult) => {
     if (!userId) return;
@@ -196,7 +197,7 @@ export default function SearchScreen() {
         // Refresh favorite locations list
         await loadFavoriteLocations();
         setError(null);
-        setSuccessMessage('Removed from favorites!');
+        setSuccessMessage(`Removed ${location.name} from favorites`);
         setSnackbarVisible(true);
       }
     } catch (error) {

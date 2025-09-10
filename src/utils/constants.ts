@@ -17,18 +17,7 @@ export const WEATHER_CONFIG = {
   maxFavoriteLocations: 5,
 } as const;
 
-export const API_CONFIG = {
-  openWeatherMap: {
-    baseUrl: 'https://api.openweathermap.org/data/2.5',
-    timeout: 10000, // 10 seconds
-    retryAttempts: 3,
-  },
-  geocoding: {
-    baseUrl: 'https://api.openweathermap.org/geo/1.0',
-    timeout: 10000,
-    retryAttempts: 3,
-  },
-} as const;
+// API configuration is now centralized in src/config/app.ts
 
 export const STORAGE_KEYS = {
   userSettings: 'user_settings',

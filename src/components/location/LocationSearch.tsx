@@ -111,12 +111,14 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
                 iconColor={isItemFavorite ? theme.colors.error : theme.colors.primary}
                 size={20}
                 onPress={() => handleFavoriteToggle(item)}
+                accessibilityLabel={isItemFavorite ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
               />
             )}
           </View>
         )}
         onPress={() => handleLocationSelect(item)}
         style={styles.resultItem}
+        accessibilityLabel={`Select ${item.name}, ${item.state ? `${item.state}, ` : ''}${item.country}`}
       />
     );
   };
@@ -166,7 +168,15 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
               </>
             )}
             
-            {results.length > 0 && (
+            {isSearching && (
+              <View style={styles.loadingContainer}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Searching...
+                </Text>
+              </View>
+            )}
+            
+            {results.length > 0 && !isSearching && (
               <>
                 <View style={[styles.sectionHeader, { borderBottomColor: theme.colors.outline }]}>
                   <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>Search Results</Text>
@@ -178,6 +188,14 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
                   style={styles.resultsList}
                 />
               </>
+            )}
+            
+            {!isSearching && query.length >= 2 && results.length === 0 && (
+              <View style={styles.noResultsContainer}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  No locations found for "{query}"
+                </Text>
+              </View>
             )}
           </Card.Content>
         </Card>
@@ -228,6 +246,14 @@ const styles = StyleSheet.create({
   },
   historyItem: {
     paddingHorizontal: 16,
+  },
+  loadingContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  noResultsContainer: {
+    padding: 16,
+    alignItems: 'center',
   },
 });
 

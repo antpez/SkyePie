@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { List, Switch, Divider, Text, Card, Snackbar, Button } from 'react-native-paper';
+import { ConsistentCard } from '../../src/components/common';
 import { useThemeContext } from '../../src/contexts/ThemeContext';
 import { useDatabase } from '../../src/contexts/DatabaseContext';
 import { useUnits } from '../../src/contexts/UnitsContext';
@@ -12,6 +13,7 @@ export default function SettingsScreen() {
   const { units, setTemperatureUnit, setWindSpeedUnit, setPressureUnit, setDistanceUnit } = useUnits();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [cacheInfo, setCacheInfo] = useState<{
     totalLocations: number;
     favoriteLocations: number;
@@ -54,11 +56,13 @@ export default function SettingsScreen() {
     if (!isLoading) {
       try {
         await setTheme(newTheme);
+        setError(null);
+        setSuccessMessage(`Theme changed to ${newTheme}`);
         setSnackbarVisible(true);
       } catch (error) {
         console.error('Error changing theme:', error);
-        setSnackbarVisible(true);
         setError('Failed to change theme. Please try again.');
+        setSnackbarVisible(true);
       }
     }
   }, [setTheme, isLoading]);
@@ -67,8 +71,9 @@ export default function SettingsScreen() {
     try {
       const newUnit = units.temperature === 'celsius' ? 'fahrenheit' : 'celsius';
       await setTemperatureUnit(newUnit);
-      setSnackbarVisible(true);
       setError(null);
+      setSuccessMessage(`Temperature unit changed to ${newUnit}`);
+      setSnackbarVisible(true);
     } catch (error) {
       console.error('Error changing temperature unit:', error);
       setError('Failed to change temperature unit. Please try again.');
@@ -81,9 +86,11 @@ export default function SettingsScreen() {
       const windUnits = ['kmh', 'mph', 'ms'] as const;
       const currentIndex = windUnits.indexOf(units.windSpeed);
       const nextIndex = (currentIndex + 1) % windUnits.length;
-      await setWindSpeedUnit(windUnits[nextIndex]);
-      setSnackbarVisible(true);
+      const newUnit = windUnits[nextIndex];
+      await setWindSpeedUnit(newUnit);
       setError(null);
+      setSuccessMessage(`Wind speed unit changed to ${newUnit}`);
+      setSnackbarVisible(true);
     } catch (error) {
       console.error('Error changing wind speed unit:', error);
       setError('Failed to change wind speed unit. Please try again.');
@@ -96,9 +103,11 @@ export default function SettingsScreen() {
       const pressureUnits = ['hpa', 'mb', 'in'] as const;
       const currentIndex = pressureUnits.indexOf(units.pressure);
       const nextIndex = (currentIndex + 1) % pressureUnits.length;
-      await setPressureUnit(pressureUnits[nextIndex]);
-      setSnackbarVisible(true);
+      const newUnit = pressureUnits[nextIndex];
+      await setPressureUnit(newUnit);
       setError(null);
+      setSuccessMessage(`Pressure unit changed to ${newUnit}`);
+      setSnackbarVisible(true);
     } catch (error) {
       console.error('Error changing pressure unit:', error);
       setError('Failed to change pressure unit. Please try again.');
@@ -125,8 +134,9 @@ export default function SettingsScreen() {
     try {
       await offlineCacheService.clearExpiredCache();
       await loadCacheInfo();
-      setSnackbarVisible(true);
       setError(null);
+      setSuccessMessage('Expired cache cleared successfully');
+      setSnackbarVisible(true);
     } catch (error) {
       console.error('Error clearing expired cache:', error);
       setError('Failed to clear cache. Please try again.');
@@ -145,10 +155,6 @@ export default function SettingsScreen() {
     { backgroundColor: theme.colors.background }
   ], [theme.colors.background, effectiveTheme]);
   
-  const cardStyle = useMemo(() => [
-    styles.card, 
-    { backgroundColor: theme.colors.surface }
-  ], [theme.colors.surface, effectiveTheme]);
   
   const sectionTitleStyle = useMemo(() => [
     styles.sectionTitle,
@@ -170,7 +176,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={containerStyle} key={`settings-${effectiveTheme}-${themeMode}`}>
-      <Card style={cardStyle}>
+      <ConsistentCard>
         <Card.Content>
           <Text variant="titleLarge" style={sectionTitleStyle}>
             Appearance
@@ -234,9 +240,9 @@ export default function SettingsScreen() {
             )}
           />
         </Card.Content>
-      </Card>
+      </ConsistentCard>
 
-      <Card style={cardStyle}>
+      <ConsistentCard>
         <Card.Content>
           <Text variant="titleLarge" style={sectionTitleStyle}>
             Weather Units
@@ -270,9 +276,9 @@ export default function SettingsScreen() {
             onPress={handlePressureUnitChange}
           />
         </Card.Content>
-      </Card>
+      </ConsistentCard>
 
-      <Card style={cardStyle}>
+      <ConsistentCard>
         <Card.Content>
           <Text variant="titleLarge" style={sectionTitleStyle}>
             Display Options
@@ -312,12 +318,11 @@ export default function SettingsScreen() {
             right={() => <Switch value={false} />}
           />
         </Card.Content>
-      </Card>
+      </ConsistentCard>
 
       {/* Notifications temporarily unavailable (requires paid subscription) */}
 
-
-      <Card style={cardStyle}>
+      <ConsistentCard>
         <Card.Content>
           <Text variant="titleLarge" style={sectionTitleStyle}>
             Cache Management
@@ -347,9 +352,9 @@ export default function SettingsScreen() {
             Clear Expired Cache
           </Button>
         </Card.Content>
-      </Card>
+      </ConsistentCard>
 
-      <Card style={cardStyle}>
+      <ConsistentCard>
         <Card.Content>
           <Text variant="titleLarge" style={sectionTitleStyle}>
             About
@@ -369,17 +374,19 @@ export default function SettingsScreen() {
             left={(props) => <List.Icon {...props} icon="cloud" />}
           />
         </Card.Content>
-      </Card>
+      </ConsistentCard>
       
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => {
           setSnackbarVisible(false);
           setError(null);
+          setSuccessMessage(null);
         }}
-        duration={2000}
+        duration={3000}
+        style={error ? { backgroundColor: theme.colors.error } : { backgroundColor: theme.colors.primary }}
       >
-        {error || `Settings updated`}
+        {error || successMessage || 'Settings updated'}
       </Snackbar>
     </ScrollView>
   );
@@ -388,10 +395,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  card: {
-    margin: 16,
-    elevation: 2,
   },
   sectionTitle: {
     marginBottom: 16,

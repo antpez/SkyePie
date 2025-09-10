@@ -1,4 +1,4 @@
-import React, { useMemo, memo } from 'react';
+import React, { useMemo, memo, useCallback } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
@@ -22,50 +22,51 @@ export const HourlyForecast: React.FC<HourlyForecastProps> = memo(({
     return forecast.slice(0, 4);
   }, [forecast]);
 
-  // Theme-aware text styles
-  const timeStyle = useMemo(() => [
-    styles.time,
-    { color: theme.colors.onSurface }
-  ], [theme.colors.onSurface, effectiveTheme]);
+  // Memoize processed forecast items to prevent recalculation
+  const processedForecastItems = useMemo(() => {
+    return next12Hours.map((item, index) => ({
+      id: `${item.dt}-${index}`,
+      time: formatTime(item.dt),
+      temperature: formatTemperature(item.main.temp, units.temperature),
+      description: item.weather[0]?.description || '',
+      condition: item.weather[0]
+    }));
+  }, [next12Hours, units.temperature]);
 
-  const tempStyle = useMemo(() => [
-    styles.temperature,
-    { color: theme.colors.onSurface }
-  ], [theme.colors.onSurface, effectiveTheme]);
+  // Memoize theme styles
+  const themeStyles = useMemo(() => ({
+    time: [styles.time, { color: theme.colors.onSurface }],
+    temperature: [styles.temperature, { color: theme.colors.onSurface }],
+    description: [styles.description, { color: theme.colors.onSurfaceVariant }],
+    card: [styles.card, { backgroundColor: theme.colors.surface }],
+    title: [styles.title, { color: theme.colors.onSurface }]
+  }), [theme.colors]);
 
-  const descriptionStyle = useMemo(() => [
-    styles.description,
-    { color: theme.colors.onSurfaceVariant }
-  ], [theme.colors.onSurfaceVariant, effectiveTheme]);
-
-  const renderHourlyItem = (item: ForecastItem, index: number) => {
-    const time = formatTime(item.dt);
-    const temperature = formatTemperature(item.main.temp, units.temperature);
-    const description = item.weather[0]?.description || '';
-
+  // Memoize render function to prevent recreation
+  const renderHourlyItem = useCallback((item: typeof processedForecastItems[0]) => {
     return (
-      <View key={`${item.dt}-${index}`} style={styles.hourlyItem}>
-        <Text style={timeStyle}>{time}</Text>
+      <View key={item.id} style={styles.hourlyItem}>
+        <Text style={themeStyles.time}>{item.time}</Text>
         <WeatherIcon
-          condition={item.weather[0]}
+          condition={item.condition}
           size={32}
         />
-        <Text style={tempStyle}>{temperature}</Text>
-        <Text style={descriptionStyle} numberOfLines={1}>
-          {description}
+        <Text style={themeStyles.temperature}>{item.temperature}</Text>
+        <Text style={themeStyles.description} numberOfLines={1}>
+          {item.description}
         </Text>
       </View>
     );
-  };
+  }, [themeStyles]);
 
   if (!next12Hours || next12Hours.length === 0) {
     return null;
   }
 
   return (
-    <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+    <Card style={themeStyles.card}>
       <Card.Content style={styles.content}>
-        <Text variant="titleMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
+        <Text variant="titleMedium" style={themeStyles.title}>
           12-Hour Forecast
         </Text>
         <ScrollView
@@ -73,7 +74,7 @@ export const HourlyForecast: React.FC<HourlyForecastProps> = memo(({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {next12Hours.map((item, index) => renderHourlyItem(item, index))}
+          {processedForecastItems.map(renderHourlyItem)}
         </ScrollView>
       </Card.Content>
     </Card>

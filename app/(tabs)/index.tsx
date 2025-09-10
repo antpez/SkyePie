@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { Text, FAB, Snackbar, Button, SegmentedButtons } from 'react-native-paper';
 import { useLocalSearchParams } from 'expo-router';
 import { WeatherCard, ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts } from '../../src/components';
-import { NetworkErrorDisplay } from '../../src/components/common/NetworkErrorDisplay';
+import { NetworkErrorDisplay, ConsistentCard, WeatherSkeleton } from '../../src/components/common';
 import { HealthCard, SkinProtectionCard, WeatherTipsCard } from '../../src/components/health';
 import { AIInsightsCard, ClothingRecommendationsCard, ActivityRecommendationsCard } from '../../src/components/ai';
 import { useLocation } from '../../src/hooks';
@@ -46,6 +46,7 @@ export default function WeatherScreen() {
     fetchForecast,
     fetchAlerts,
     refreshWeather,
+    fastInitialize,
     clearNetworkError,
     refreshNetworkStatus
   } = useOfflineWeather(API_KEY);
@@ -53,6 +54,7 @@ export default function WeatherScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [hasCachedData, setHasCachedData] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<LocationCoordinates | null>(null);
   const [showHourlyForecast, setShowHourlyForecast] = useState(false);
   const [showAdvancedFeatures, setShowAdvancedFeatures] = useState(false);
@@ -85,21 +87,10 @@ export default function WeatherScreen() {
 
   // (Weather map temporarily disabled)
 
-  // Memoized theme styles to prevent re-renders
-  const containerStyle = useMemo(() => [
-    styles.container, 
-    { backgroundColor: theme.colors.background }
-  ], [theme.colors.background]);
-
-  const emptyTitleStyle = useMemo(() => [
-    styles.emptyTitle, 
-    { color: theme.colors.onSurface }
-  ], [theme.colors.onSurface]);
-
-  const emptyMessageStyle = useMemo(() => [
-    styles.emptyMessage, 
-    { color: theme.colors.onSurface }
-  ], [theme.colors.onSurface]);
+  // Simplified theme styles - only memoize when necessary
+  const containerStyle = [styles.container, { backgroundColor: theme.colors.background }];
+  const emptyTitleStyle = [styles.emptyTitle, { color: theme.colors.onSurface }];
+  const emptyMessageStyle = [styles.emptyMessage, { color: theme.colors.onSurface }];
 
   const loadWeatherData = useCallback(async (location: LocationCoordinates) => {
     try {
@@ -241,13 +232,18 @@ export default function WeatherScreen() {
   useEffect(() => {
     const initApp = async () => {
       // Wait for database initialization
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 2000ms
       setIsInitializing(false);
       
       // Automatically request location when app starts
       try {
         const location = await getCurrentLocation();
         if (location) {
+          // Try fast initialization first (load cached data immediately)
+          const hasCached = await fastInitialize(location.latitude, location.longitude);
+          setHasCachedData(hasCached);
+          
+          // Then load fresh data in background
           await loadWeatherData(location);
         }
       } catch (err) {
@@ -256,6 +252,12 @@ export default function WeatherScreen() {
           latitude: 51.5074,
           longitude: -0.1278,
         };
+        
+        // Try fast initialization with fallback location
+        const hasCached = await fastInitialize(fallbackLocation.latitude, fallbackLocation.longitude);
+        setHasCachedData(hasCached);
+        
+        // Then load fresh data
         await loadWeatherData(fallbackLocation);
       }
     };
@@ -312,14 +314,20 @@ export default function WeatherScreen() {
   }, [currentWeather, forecast, isInitializing, loadAdvancedFeatures]);
 
 
-  // Show database initialization loading
-  if (dbInitializing) {
-    return (
-      <View style={containerStyle} key={`db-initializing-${effectiveTheme}`}>
-        <LoadingSpinner message="Initializing app..." />
-      </View>
-    );
-  }
+  // Consolidated loading and error states
+  const getLoadingMessage = () => {
+    if (dbInitializing) return "Setting up your weather app...";
+    if (isInitializing) return "Finding your location...";
+    if (isLoading && !currentWeather) return "Loading weather data...";
+    return "Loading...";
+  };
+
+  const getLoadingProgress = () => {
+    if (dbInitializing) return 0.2;
+    if (isInitializing) return 0.5;
+    if (isLoading && !currentWeather) return 0.8;
+    return 0.1;
+  };
 
   // Show database error
   if (dbError) {
@@ -327,16 +335,18 @@ export default function WeatherScreen() {
       <View style={containerStyle} key={`db-error-${effectiveTheme}`}>
         <View style={styles.permissionContainer}>
           <Text variant="headlineSmall" style={[styles.permissionTitle, { color: theme.colors.onSurface }]}>
-            Database Error
+            Setup Error
           </Text>
           <Text variant="bodyLarge" style={[styles.permissionMessage, { color: theme.colors.onSurface }]}>
             {dbError}
           </Text>
+          <Text variant="bodyMedium" style={[styles.permissionSubtext, { color: theme.colors.onSurfaceVariant }]}>
+            Please restart the app to try again.
+          </Text>
           <FAB
             icon="refresh"
-            label="Retry"
+            label="Restart App"
             onPress={() => {
-              // Force app restart by reloading the current screen
               const { router } = require('expo-router');
               router.replace('/(tabs)/');
             }}
@@ -356,7 +366,7 @@ export default function WeatherScreen() {
             Location Access Required
           </Text>
           <Text variant="bodyLarge" style={[styles.permissionMessage, { color: theme.colors.onSurface }]}>
-            Please enable location access to get weather for your current location.
+            SkyePie needs location access to provide accurate weather information for your area.
           </Text>
           <Text variant="bodyMedium" style={[styles.permissionSubtext, { color: theme.colors.onSurfaceVariant }]}>
             For iOS Simulator: Go to Device → Location → Custom Location and enter coordinates
@@ -372,22 +382,29 @@ export default function WeatherScreen() {
     );
   }
 
-  if (isInitializing) {
-    return (
-      <View style={containerStyle} key={`initializing-${effectiveTheme}`}>
-        <LoadingSpinner message="Getting your location..." />
-      </View>
-    );
-  }
-
-  if (isLoading && !currentWeather) {
+  // Show consolidated loading state
+  if (dbInitializing || isInitializing) {
     return (
       <View style={containerStyle} key={`loading-${effectiveTheme}`}>
-        <LoadingSpinner message="Loading weather data..." />
+        <LoadingSpinner 
+          message={getLoadingMessage()} 
+          progress={getLoadingProgress()}
+          showProgress={true}
+        />
       </View>
     );
   }
 
+  // Show skeleton while loading fresh data (if no cached data)
+  if (isLoading && !currentWeather && !hasCachedData) {
+    return (
+      <View style={containerStyle} key={`skeleton-${effectiveTheme}`}>
+        <WeatherSkeleton showDetails={true} />
+      </View>
+    );
+  }
+
+  // Show error state with better UX
   if (error && !currentWeather) {
     return (
       <View style={containerStyle} key={`error-${effectiveTheme}`}>
@@ -397,6 +414,9 @@ export default function WeatherScreen() {
           </Text>
           <Text variant="bodyLarge" style={[styles.errorMessage, { color: theme.colors.onSurface }]}>
             {error}
+          </Text>
+          <Text variant="bodyMedium" style={[styles.errorSubtext, { color: theme.colors.onSurfaceVariant }]}>
+            Check your internet connection and try again.
           </Text>
           <FAB
             icon="refresh"
@@ -509,7 +529,7 @@ export default function WeatherScreen() {
         )}
 
         {/* Advanced Features Toggle */}
-        <View style={styles.advancedFeaturesToggle}>
+        <ConsistentCard margin="medium">
           <Button
             mode="outlined"
             onPress={() => setShowAdvancedFeatures(!showAdvancedFeatures)}
@@ -518,7 +538,7 @@ export default function WeatherScreen() {
           >
             {showAdvancedFeatures ? 'Hide Advanced Features' : 'Show Advanced Features'}
           </Button>
-        </View>
+        </ConsistentCard>
 
         {/* Advanced Features */}
         {showAdvancedFeatures && (
@@ -550,7 +570,7 @@ export default function WeatherScreen() {
 
             {/* Gamification */}
             {gamificationData && (
-              <View style={[styles.featureCard, { backgroundColor: theme.colors.surface }]}>
+              <ConsistentCard>
                 <Text variant="titleLarge" style={[styles.featureTitle, { color: theme.colors.onSurface }]}>
                   🎮 Gamification
                 </Text>
@@ -560,12 +580,12 @@ export default function WeatherScreen() {
                 <Text variant="bodySmall" style={[styles.featureDescription, { color: theme.colors.onSurfaceVariant }]}>
                   Achievements: {gamificationData.achievements.filter((a: any) => a.isUnlocked).length}/{gamificationData.achievements.length}
                 </Text>
-              </View>
+              </ConsistentCard>
             )}
 
             {/* Social Features */}
             {socialData && (
-              <View style={[styles.featureCard, { backgroundColor: theme.colors.surface }]}>
+              <ConsistentCard>
                 <Text variant="titleLarge" style={[styles.featureTitle, { color: theme.colors.onSurface }]}>
                   📸 Social Features
                 </Text>
@@ -575,24 +595,24 @@ export default function WeatherScreen() {
                 <Text variant="bodySmall" style={[styles.featureDescription, { color: theme.colors.onSurfaceVariant }]}>
                   Active Challenges: {socialData.challenges.length}
                 </Text>
-              </View>
+              </ConsistentCard>
             )}
 
             {/* Travel Intelligence */}
             {travelData && (
-              <View style={[styles.featureCard, { backgroundColor: theme.colors.surface }]}>
+              <ConsistentCard>
                 <Text variant="titleLarge" style={[styles.featureTitle, { color: theme.colors.onSurface }]}>
                   ✈️ Travel Intelligence
                 </Text>
                 <Text variant="bodyMedium" style={[styles.featureDescription, { color: theme.colors.onSurfaceVariant }]}>
                   Destinations: {travelData.destinations.length} | Recommendations: {travelData.recommendations.length}
                 </Text>
-              </View>
+              </ConsistentCard>
             )}
 
             {/* Accessibility */}
             {accessibilityData && (
-              <View style={[styles.featureCard, { backgroundColor: theme.colors.surface }]}>
+              <ConsistentCard>
                 <Text variant="titleLarge" style={[styles.featureTitle, { color: theme.colors.onSurface }]}>
                   ♿ Accessibility
                 </Text>
@@ -602,12 +622,12 @@ export default function WeatherScreen() {
                 <Text variant="bodySmall" style={[styles.featureDescription, { color: theme.colors.onSurfaceVariant }]}>
                   Haptic Alerts: {accessibilityData.settings.hapticAlerts.enabled ? 'Enabled' : 'Disabled'}
                 </Text>
-              </View>
+              </ConsistentCard>
             )}
 
             {/* Smart Home */}
             {smartHomeData && (
-              <View style={[styles.featureCard, { backgroundColor: theme.colors.surface }]}>
+              <ConsistentCard>
                 <Text variant="titleLarge" style={[styles.featureTitle, { color: theme.colors.onSurface }]}>
                   🏠 Smart Home
                 </Text>
@@ -617,12 +637,12 @@ export default function WeatherScreen() {
                 <Text variant="bodySmall" style={[styles.featureDescription, { color: theme.colors.onSurfaceVariant }]}>
                   Garden Alerts: {smartHomeData.gardenAlerts.length} | Equipment Alerts: {smartHomeData.equipmentAlerts.length}
                 </Text>
-              </View>
+              </ConsistentCard>
             )}
 
             {/* Visualization */}
             {visualizationData && (
-              <View style={[styles.featureCard, { backgroundColor: theme.colors.surface }]}>
+              <ConsistentCard>
                 <Text variant="titleLarge" style={[styles.featureTitle, { color: theme.colors.onSurface }]}>
                   🎨 Advanced Visualization
                 </Text>
@@ -632,12 +652,12 @@ export default function WeatherScreen() {
                 <Text variant="bodySmall" style={[styles.featureDescription, { color: theme.colors.onSurfaceVariant }]}>
                   Soundscape: {visualizationData.soundscape.name}
                 </Text>
-              </View>
+              </ConsistentCard>
             )}
 
             {/* Data Sources */}
             {dataSourcesData && (
-              <View style={[styles.featureCard, { backgroundColor: theme.colors.surface }]}>
+              <ConsistentCard>
                 <Text variant="titleLarge" style={[styles.featureTitle, { color: theme.colors.onSurface }]}>
                   📡 Data Sources
                 </Text>
@@ -647,12 +667,12 @@ export default function WeatherScreen() {
                 <Text variant="bodySmall" style={[styles.featureDescription, { color: theme.colors.onSurfaceVariant }]}>
                   Insights: {dataSourcesData.weatherInsights.length}
                 </Text>
-              </View>
+              </ConsistentCard>
             )}
 
             {/* Hyperlocal */}
             {hyperlocalData && (
-              <View style={[styles.featureCard, { backgroundColor: theme.colors.surface }]}>
+              <ConsistentCard>
                 <Text variant="titleLarge" style={[styles.featureTitle, { color: theme.colors.onSurface }]}>
                   🌍 Hyperlocal Weather
                 </Text>
@@ -662,7 +682,7 @@ export default function WeatherScreen() {
                 <Text variant="bodySmall" style={[styles.featureDescription, { color: theme.colors.onSurfaceVariant }]}>
                   Crowdsourced Data: {hyperlocalData.crowdsourcedData.length}
                 </Text>
-              </View>
+              </ConsistentCard>
             )}
           </>
         )}
@@ -747,8 +767,14 @@ const styles = StyleSheet.create({
   },
   errorMessage: {
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
     lineHeight: 24,
+  },
+  errorSubtext: {
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 20,
+    fontSize: 14,
   },
   emptyContainer: {
     flex: 1,
@@ -787,18 +813,8 @@ const styles = StyleSheet.create({
   segmentedButtons: {
     borderRadius: 8,
   },
-  advancedFeaturesToggle: {
-    margin: 16,
-    alignItems: 'center',
-  },
   toggleButton: {
     borderRadius: 8,
-  },
-  featureCard: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 8,
-    elevation: 2,
   },
   featureTitle: {
     marginBottom: 8,

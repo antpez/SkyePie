@@ -103,24 +103,31 @@ export const useOfflineWeather = (apiKey?: string) => {
     }
 
     try {
+      // Don't set loading to true immediately - show cached data first
+      if (!forceRefresh) {
+        // Try to get cached data first and show it immediately
+        try {
+          const currentUserId = await ensureUserInitialized();
+          const location = createLocationObject(currentUserId, latitude, longitude);
+          const cachedWeather = await offlineCacheService.getCachedCurrentWeather(location, currentUserId);
+          if (cachedWeather) {
+            setCurrentWeather(cachedWeather);
+            setLastUpdated(new Date());
+            setIsOffline(!isOnline);
+            // Continue to fetch fresh data in background
+          }
+        } catch (cacheError) {
+          console.warn('Error loading cached weather:', cacheError);
+        }
+      }
+
+      // Set loading only when fetching fresh data
       setIsLoading(true);
       setError(null);
 
       // Ensure user is initialized
       const currentUserId = await ensureUserInitialized();
       const location = createLocationObject(currentUserId, latitude, longitude);
-
-      // Try to get cached data first (unless forcing refresh)
-      if (!forceRefresh) {
-        const cachedWeather = await offlineCacheService.getCachedCurrentWeather(location, currentUserId);
-        if (cachedWeather) {
-          setCurrentWeather(cachedWeather);
-          setLastUpdated(new Date());
-          // Only set offline if we're actually offline, not just using cached data
-          setIsOffline(!isOnline);
-          return cachedWeather;
-        }
-      }
 
       // Fetch fresh data from API
       const weather = await weatherService.getCurrentWeather(
@@ -334,11 +341,20 @@ export const useOfflineWeather = (apiKey?: string) => {
     units: TemperatureUnit = 'celsius'
   ) => {
     try {
-      await Promise.all([
+      // Use Promise.allSettled to prevent one failure from stopping others
+      const results = await Promise.allSettled([
         fetchCurrentWeather(latitude, longitude, units, true),
         fetchForecast(latitude, longitude, units, true),
         fetchAlerts(latitude, longitude),
       ]);
+      
+      // Log any failures but don't throw
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const operation = ['current weather', 'forecast', 'alerts'][index];
+          console.warn(`Failed to refresh ${operation}:`, result.reason);
+        }
+      });
     } catch (err) {
       console.error('Error refreshing weather:', err);
       throw err;
@@ -394,6 +410,37 @@ export const useOfflineWeather = (apiKey?: string) => {
     setNetworkError(null);
   }, []);
 
+  // Fast initialization - load cached data immediately without API calls
+  const fastInitialize = useCallback(async (latitude: number, longitude: number) => {
+    try {
+      const currentUserId = await ensureUserInitialized();
+      const location = createLocationObject(currentUserId, latitude, longitude);
+
+      // Load cached data in parallel
+      const [cachedWeather, cachedForecast] = await Promise.allSettled([
+        offlineCacheService.getCachedCurrentWeather(location, currentUserId),
+        offlineCacheService.getCachedWeatherForecast(location, currentUserId),
+      ]);
+
+      // Set cached data immediately if available
+      if (cachedWeather.status === 'fulfilled' && cachedWeather.value) {
+        setCurrentWeather(cachedWeather.value);
+        setLastUpdated(new Date());
+      }
+
+      if (cachedForecast.status === 'fulfilled' && cachedForecast.value) {
+        setForecast(cachedForecast.value);
+        setLastUpdated(new Date());
+      }
+
+      // Return whether we have any cached data
+      return !!(cachedWeather.status === 'fulfilled' && cachedWeather.value);
+    } catch (error) {
+      console.warn('Error in fast initialization:', error);
+      return false;
+    }
+  }, [ensureUserInitialized, createLocationObject]);
+
   const clearCache = useCallback(async () => {
     if (!userId) return;
 
@@ -443,6 +490,7 @@ export const useOfflineWeather = (apiKey?: string) => {
     refreshWeather,
     loadCachedWeather,
     loadCachedForecast,
+    fastInitialize,
     clearError,
     clearNetworkError,
     clearCache,

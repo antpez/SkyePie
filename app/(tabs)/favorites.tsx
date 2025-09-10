@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { Text, Card, List, FAB, Snackbar, IconButton } from 'react-native-paper';
+import { ConsistentCard } from '../../src/components/common';
 import { router } from 'expo-router';
 import { useThemeContext } from '../../src/contexts/ThemeContext';
 import { useDatabase } from '../../src/contexts/DatabaseContext';
@@ -22,10 +23,6 @@ export default function FavoritesScreen() {
     { backgroundColor: theme.colors.background }
   ], [theme.colors.background, effectiveTheme]);
 
-  const cardStyle = useMemo(() => [
-    styles.card, 
-    { backgroundColor: theme.colors.surface }
-  ], [theme.colors.surface, effectiveTheme]);
 
   // Load favorite locations
   const loadFavoriteLocations = useCallback(async () => {
@@ -92,7 +89,7 @@ export default function FavoritesScreen() {
 
   // Render location item
   const renderLocationItem = ({ item }: { item: Location }) => (
-    <Card style={cardStyle} key={`favorite-${item.id}-${effectiveTheme}`}>
+    <ConsistentCard key={`favorite-${item.id}-${effectiveTheme}`} margin="small">
       <List.Item
         title={item.name}
         description={`${item.state ? `${item.state}, ` : ''}${item.country}`}
@@ -116,7 +113,7 @@ export default function FavoritesScreen() {
         onPress={() => handleLocationSelect(item)}
         style={styles.locationItem}
       />
-    </Card>
+    </ConsistentCard>
   );
 
   // Show loading state
@@ -141,7 +138,10 @@ export default function FavoritesScreen() {
             No Favorite Locations
           </Text>
           <Text variant="bodyLarge" style={[styles.emptyMessage, { color: theme.colors.onSurface }]}>
-            Add locations to your favorites for quick access.
+            Add locations to your favorites for quick access to weather information.
+          </Text>
+          <Text variant="bodyMedium" style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
+            Tap the search tab to find and add locations, or use the + button below.
           </Text>
         </View>
         
@@ -207,10 +207,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 100, // Space for FAB
   },
-  card: {
-    marginBottom: 8,
-    elevation: 2,
-  },
   locationItem: {
     paddingVertical: 8,
   },
@@ -232,6 +228,12 @@ const styles = StyleSheet.create({
   emptyMessage: {
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    textAlign: 'center',
+    lineHeight: 20,
+    fontSize: 14,
   },
   fab: {
     position: 'absolute',

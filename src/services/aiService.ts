@@ -7,7 +7,7 @@ import {
   UserPreferences 
 } from '../types/ai';
 import { CurrentWeather, WeatherForecast } from '../types/weather';
-import { groqService } from './groqService';
+import { aiServiceSelector } from './aiServiceSelector';
 
 export class AIService {
   private static instance: AIService;
@@ -34,13 +34,11 @@ export class AIService {
   }
 
   async generateClothingRecommendations(weather: CurrentWeather, forecast: WeatherForecast): Promise<ClothingRecommendation[]> {
-    // Try Groq AI if configured
-    if (groqService.isConfigured()) {
-      try {
-        return await groqService.generateClothingRecommendations(weather, forecast, this.userPreferences);
-      } catch (error) {
-        console.warn('Groq AI unavailable, falling back to basic recommendations:', error);
-      }
+    // Try AI service selector (handles Groq and fallbacks)
+    try {
+      return await aiServiceSelector.generateClothingRecommendations(weather, forecast, this.userPreferences);
+    } catch (error) {
+      console.warn('AI service unavailable, falling back to basic recommendations:', error);
     }
 
     // Fallback to basic recommendations
@@ -212,13 +210,11 @@ export class AIService {
   }
 
   async generateActivityRecommendations(weather: CurrentWeather, userPrefs: UserPreferences): Promise<ActivityRecommendation[]> {
-    // Try Groq AI if configured
-    if (groqService.isConfigured()) {
-      try {
-        return await groqService.generateActivityRecommendations(weather, userPrefs);
-      } catch (error) {
-        console.warn('Groq AI unavailable, falling back to basic recommendations:', error);
-      }
+    // Try AI service selector (handles Groq and fallbacks)
+    try {
+      return await aiServiceSelector.generateActivityRecommendations(weather, userPrefs);
+    } catch (error) {
+      console.warn('AI service unavailable, falling back to basic recommendations:', error);
     }
 
     // Fallback to basic recommendations
@@ -440,13 +436,11 @@ export class AIService {
     forecast: WeatherForecast, 
     userPrefs: UserPreferences
   ): Promise<PersonalizedInsight[]> {
-    // Try Groq AI if configured
-    if (groqService.isConfigured()) {
-      try {
-        return await groqService.generatePersonalizedInsights(weather, forecast, userPrefs);
-      } catch (error) {
-        console.warn('Groq AI unavailable, falling back to basic insights:', error);
-      }
+    // Try AI service selector (handles Groq and fallbacks)
+    try {
+      return await aiServiceSelector.generatePersonalizedInsights(weather, forecast, userPrefs);
+    } catch (error) {
+      console.warn('AI service unavailable, falling back to basic insights:', error);
     }
 
     // Fallback to basic insights

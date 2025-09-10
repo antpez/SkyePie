@@ -13,9 +13,16 @@ export const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST'],
+        ignoredPaths: ['weather.lastUpdated', 'location.lastUpdated'],
+      },
+      immutableCheck: {
+        ignoredPaths: ['weather.lastUpdated', 'location.lastUpdated'],
       },
     }),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+// Export selectors
+export * from './selectors';

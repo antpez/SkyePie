@@ -15,6 +15,8 @@ export class WeatherService {
   private static instance: WeatherService;
   private api: AxiosInstance;
   private config: WeatherApiConfig;
+  private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
+  private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
   constructor(apiKey: string) {
     this.config = {
@@ -31,9 +33,18 @@ export class WeatherService {
         appid: this.config.apiKey,
         units: 'metric', // Use metric units by default
       },
+      // Optimize for faster requests
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+      },
+      // Enable keep-alive for faster subsequent requests
+      maxRedirects: 3,
+      validateStatus: (status) => status < 500, // Don't throw on 4xx errors
     });
 
     this.setupInterceptors();
+    this.setupCacheCleanup();
   }
 
   static getInstance(apiKey?: string): WeatherService {
@@ -44,6 +55,45 @@ export class WeatherService {
       WeatherService.instance = new WeatherService(apiKey);
     }
     return WeatherService.instance;
+  }
+
+  private setupCacheCleanup() {
+    // Clean up expired cache entries every 5 minutes
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, value] of this.cache.entries()) {
+        if (now - value.timestamp > value.ttl) {
+          this.cache.delete(key);
+        }
+      }
+    }, 5 * 60 * 1000);
+  }
+
+  private getCacheKey(endpoint: string, params: Record<string, any>): string {
+    const sortedParams = Object.keys(params)
+      .sort()
+      .map(key => `${key}=${params[key]}`)
+      .join('&');
+    return `${endpoint}?${sortedParams}`;
+  }
+
+  private getCachedData<T>(cacheKey: string): T | null {
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < cached.ttl) {
+      return cached.data;
+    }
+    if (cached) {
+      this.cache.delete(cacheKey);
+    }
+    return null;
+  }
+
+  private setCachedData<T>(cacheKey: string, data: T, ttl: number = this.CACHE_TTL): void {
+    this.cache.set(cacheKey, {
+      data,
+      timestamp: Date.now(),
+      ttl
+    });
   }
 
   private setupInterceptors() {
@@ -77,16 +127,23 @@ export class WeatherService {
     longitude: number,
     units: 'metric' | 'imperial' = 'metric'
   ): Promise<CurrentWeather> {
+    const params = { lat: latitude, lon: longitude, units };
+    const cacheKey = this.getCacheKey('/weather', params);
+    
+    // Check cache first
+    const cachedData = this.getCachedData<CurrentWeather>(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
     return retryHandler.executeWithRetry(
       async () => {
         const response: AxiosResponse<CurrentWeather> = await this.api.get('/weather', {
-          params: {
-            lat: latitude,
-            lon: longitude,
-            units,
-          },
+          params,
         });
 
+        // Cache the result
+        this.setCachedData(cacheKey, response.data);
         return response.data;
       },
       {
@@ -103,15 +160,22 @@ export class WeatherService {
     longitude: number,
     units: 'metric' | 'imperial' = 'metric'
   ): Promise<WeatherForecast> {
+    const params = { lat: latitude, lon: longitude, units };
+    const cacheKey = this.getCacheKey('/forecast', params);
+    
+    // Check cache first
+    const cachedData = this.getCachedData<WeatherForecast>(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
     try {
       const response: AxiosResponse<WeatherForecast> = await this.api.get('/forecast', {
-        params: {
-          lat: latitude,
-          lon: longitude,
-          units,
-        },
+        params,
       });
 
+      // Cache the result
+      this.setCachedData(cacheKey, response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching weather forecast:', error);

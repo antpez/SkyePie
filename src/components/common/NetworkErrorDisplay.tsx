@@ -75,7 +75,30 @@ export const NetworkErrorDisplay: React.FC<NetworkErrorDisplayProps> = memo(({
       return 'You can try again in a moment.';
     }
     
-    return 'Please check your settings and try again.';
+    return 'Please check your internet connection and try again.';
+  };
+
+  const getErrorTitle = () => {
+    switch (error.type) {
+      case 'CONNECTION_ERROR':
+        return 'Connection Problem';
+      case 'TIMEOUT_ERROR':
+        return 'Request Timeout';
+      case 'RATE_LIMIT_ERROR':
+        return 'Rate Limit Exceeded';
+      case 'SERVER_ERROR':
+        return 'Server Error';
+      case 'AUTHENTICATION_ERROR':
+        return 'Authentication Failed';
+      case 'PERMISSION_ERROR':
+        return 'Permission Denied';
+      case 'NOT_FOUND_ERROR':
+        return 'Not Found';
+      case 'VALIDATION_ERROR':
+        return 'Invalid Request';
+      default:
+        return 'Network Error';
+    }
   };
 
   if (compact) {
@@ -119,7 +142,7 @@ export const NetworkErrorDisplay: React.FC<NetworkErrorDisplayProps> = memo(({
               variant="titleMedium" 
               style={[styles.title, { color: theme.colors.onErrorContainer }]}
             >
-              Network Error
+              {getErrorTitle()}
             </Text>
             <Text 
               variant="bodySmall" 

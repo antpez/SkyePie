@@ -1,4 +1,4 @@
-import React, { useMemo, memo } from 'react';
+import React, { useMemo, memo, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
@@ -27,58 +27,61 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
     shouldUseHighContrast 
   } = useAccessibilityContext();
 
-  const mainCondition = weather.weather[0];
-  const main = weather.main;
-  const wind = weather.wind;
+  // Memoize weather data extraction to prevent recalculation
+  const weatherData = useMemo(() => ({
+    mainCondition: weather.weather?.[0] || { id: 800, main: 'Clear', description: 'clear sky', icon: '01d' },
+    main: weather.main,
+    wind: weather.wind,
+    sys: weather.sys,
+    visibility: weather.visibility,
+    timezone: weather.timezone
+  }), [weather]);
 
-  // Theme-aware text styles
-  const locationNameStyle = useMemo(() => [
-    styles.locationName,
-    { color: theme.colors.onSurface }
-  ], [theme.colors.onSurface, effectiveTheme]);
+  // Memoize formatted values to prevent recalculation on every render
+  const formattedValues = useMemo(() => ({
+    humidity: formatHumidity(weatherData.main.humidity),
+    windSpeed: formatWindSpeed(weatherData.wind.speed, units.windSpeed),
+    pressure: formatPressure(weatherData.main.pressure, units.pressure),
+    visibility: formatVisibility(weatherData.visibility, units.distance),
+    sunrise: weatherData.sys.sunrise ? formatTime(weatherData.sys.sunrise, weatherData.timezone) : 'N/A',
+    sunset: weatherData.sys.sunset ? formatTime(weatherData.sys.sunset, weatherData.timezone) : 'N/A',
+    feelsLike: formatTemperature(weatherData.main.feels_like, units.temperature)
+  }), [weatherData, units]);
 
-  const conditionStyle = useMemo(() => [
-    styles.condition,
-    { color: theme.colors.onSurfaceVariant }
-  ], [theme.colors.onSurfaceVariant, effectiveTheme]);
+  // Memoize accessibility settings to prevent recalculation
+  const accessibilitySettings = useMemo(() => ({
+    titleFontSize: getFontSize(18),
+    bodyFontSize: getFontSize(14),
+    smallFontSize: getFontSize(12),
+    titleFontWeight: shouldUseBoldText() ? 'bold' : 'normal',
+    bodyFontWeight: shouldUseBoldText() ? '600' : 'normal',
+    useHighContrast: shouldUseHighContrast()
+  }), [getFontSize, shouldUseBoldText, shouldUseHighContrast]);
 
-  const feelsLikeStyle = useMemo(() => [
-    styles.feelsLike,
-    { color: theme.colors.onSurfaceVariant }
-  ], [theme.colors.onSurfaceVariant, effectiveTheme]);
-
-  const detailLabelStyle = useMemo(() => [
-    styles.detailLabel,
-    { color: theme.colors.onSurfaceVariant }
-  ], [theme.colors.onSurfaceVariant, effectiveTheme]);
-
-  const detailValueStyle = useMemo(() => [
-    styles.detailValue,
-    { color: theme.colors.onSurface }
-  ], [theme.colors.onSurface, effectiveTheme]);
-
-
-  // Generate accessibility label
+  // Memoize accessibility label
   const accessibilityLabel = useMemo(() => {
     return generateWeatherAccessibilityLabel(weather);
   }, [weather, generateWeatherAccessibilityLabel]);
 
-  // Dynamic font sizes based on accessibility settings
-  const titleFontSize = useMemo(() => getFontSize(18), [getFontSize]);
-  const bodyFontSize = useMemo(() => getFontSize(14), [getFontSize]);
-  const smallFontSize = useMemo(() => getFontSize(12), [getFontSize]);
+  // Memoize theme-aware styles
+  const themeStyles = useMemo(() => ({
+    locationName: [styles.locationName, { color: theme.colors.onSurface }],
+    condition: [styles.condition, { color: theme.colors.onSurfaceVariant }],
+    feelsLike: [styles.feelsLike, { color: theme.colors.onSurfaceVariant }],
+    detailLabel: [styles.detailLabel, { color: theme.colors.onSurfaceVariant }],
+    detailValue: [styles.detailValue, { color: theme.colors.onSurface }],
+    card: [styles.card, { backgroundColor: theme.colors.surface }]
+  }), [theme.colors]);
 
-  // Dynamic font weights
-  const titleFontWeight = useMemo(() => shouldUseBoldText() ? 'bold' : 'normal', [shouldUseBoldText]);
-  const bodyFontWeight = useMemo(() => shouldUseBoldText() ? '600' : 'normal', [shouldUseBoldText]);
+  // Memoize card style with high contrast
+  const cardStyle = useMemo(() => [
+    themeStyles.card,
+    accessibilitySettings.useHighContrast && { borderWidth: 2, borderColor: theme.colors.primary }
+  ], [themeStyles.card, accessibilitySettings.useHighContrast, theme.colors.primary]);
 
   return (
     <Card 
-      style={[
-        styles.card, 
-        { backgroundColor: theme.colors.surface },
-        shouldUseHighContrast() && { borderWidth: 2, borderColor: theme.colors.primary }
-      ]}
+      style={cardStyle}
       accessible={true}
       accessibilityRole="summary"
       accessibilityLabel={accessibilityLabel}
@@ -90,8 +93,8 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
             <Text 
               variant="headlineSmall" 
               style={[
-                locationNameStyle,
-                { fontSize: titleFontSize, fontWeight: titleFontWeight }
+                themeStyles.locationName,
+                { fontSize: accessibilitySettings.titleFontSize, fontWeight: accessibilitySettings.titleFontWeight }
               ]}
             >
               {weather.name}
@@ -99,31 +102,35 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
             <Text 
               variant="bodyMedium" 
               style={[
-                conditionStyle,
-                { fontSize: bodyFontSize, fontWeight: bodyFontWeight }
+                themeStyles.condition,
+                { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
               ]}
             >
-              {mainCondition.description}
+              {weatherData.mainCondition.description}
             </Text>
           </View>
-          <WeatherIcon condition={mainCondition} size={64} />
+          <WeatherIcon 
+            condition={weatherData.mainCondition} 
+            size={64} 
+            accessibilityLabel={`${weatherData.mainCondition.description} weather icon`}
+          />
         </View>
 
         {/* Temperature */}
         <View style={styles.temperatureSection}>
           <TemperatureDisplay
-            temperature={main.temp}
+            temperature={weatherData.main.temp}
             unit={units.temperature}
             size="xlarge"
           />
           <Text 
             variant="bodyMedium" 
             style={[
-              feelsLikeStyle,
-              { fontSize: bodyFontSize, fontWeight: bodyFontWeight }
+              themeStyles.feelsLike,
+              { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
             ]}
           >
-            Feels like {formatTemperature(main.feels_like, units.temperature)}
+            Feels like {formattedValues.feelsLike}
           </Text>
         </View>
 
@@ -139,13 +146,13 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
               <View 
                 style={styles.detailItem}
                 accessible={true}
-                accessibilityLabel={`Humidity ${formatHumidity(main.humidity)}`}
+                accessibilityLabel={`Humidity ${formattedValues.humidity}`}
               >
                 <Text 
                   variant="bodySmall" 
                   style={[
-                    detailLabelStyle,
-                    { fontSize: smallFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailLabel,
+                    { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
                   Humidity
@@ -153,23 +160,23 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
                 <Text 
                   variant="bodyMedium" 
                   style={[
-                    detailValueStyle,
-                    { fontSize: bodyFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailValue,
+                    { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
-                  {formatHumidity(main.humidity)}
+                  {formattedValues.humidity}
                 </Text>
               </View>
               <View 
                 style={styles.detailItem}
                 accessible={true}
-                accessibilityLabel={`Wind ${formatWindSpeed(wind.speed, units.windSpeed)}`}
+                accessibilityLabel={`Wind ${formattedValues.windSpeed}`}
               >
                 <Text 
                   variant="bodySmall" 
                   style={[
-                    detailLabelStyle,
-                    { fontSize: smallFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailLabel,
+                    { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
                   Wind
@@ -177,11 +184,11 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
                 <Text 
                   variant="bodyMedium" 
                   style={[
-                    detailValueStyle,
-                    { fontSize: bodyFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailValue,
+                    { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
-                  {formatWindSpeed(wind.speed, units.windSpeed)}
+                  {formattedValues.windSpeed}
                 </Text>
               </View>
             </View>
@@ -189,13 +196,13 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
               <View 
                 style={styles.detailItem}
                 accessible={true}
-                accessibilityLabel={`Pressure ${formatPressure(main.pressure, units.pressure)}`}
+                accessibilityLabel={`Pressure ${formattedValues.pressure}`}
               >
                 <Text 
                   variant="bodySmall" 
                   style={[
-                    detailLabelStyle,
-                    { fontSize: smallFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailLabel,
+                    { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
                   Pressure
@@ -203,23 +210,23 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
                 <Text 
                   variant="bodyMedium" 
                   style={[
-                    detailValueStyle,
-                    { fontSize: bodyFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailValue,
+                    { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
-                  {formatPressure(main.pressure, units.pressure)}
+                  {formattedValues.pressure}
                 </Text>
               </View>
               <View 
                 style={styles.detailItem}
                 accessible={true}
-                accessibilityLabel={`Visibility ${formatVisibility(weather.visibility, units.distance)}`}
+                accessibilityLabel={`Visibility ${formattedValues.visibility}`}
               >
                 <Text 
                   variant="bodySmall" 
                   style={[
-                    detailLabelStyle,
-                    { fontSize: smallFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailLabel,
+                    { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
                   Visibility
@@ -227,11 +234,11 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
                 <Text 
                   variant="bodyMedium" 
                   style={[
-                    detailValueStyle,
-                    { fontSize: bodyFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailValue,
+                    { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
-                  {formatVisibility(weather.visibility, units.distance)}
+                  {formattedValues.visibility}
                 </Text>
               </View>
             </View>
@@ -239,13 +246,13 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
               <View 
                 style={styles.detailItem}
                 accessible={true}
-                accessibilityLabel={`Sunrise ${weather.sys.sunrise ? formatTime(weather.sys.sunrise, weather.timezone) : 'Not available'}`}
+                accessibilityLabel={`Sunrise ${formattedValues.sunrise}`}
               >
                 <Text 
                   variant="bodySmall" 
                   style={[
-                    detailLabelStyle,
-                    { fontSize: smallFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailLabel,
+                    { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
                   Sunrise
@@ -253,23 +260,23 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
                 <Text 
                   variant="bodyMedium" 
                   style={[
-                    detailValueStyle,
-                    { fontSize: bodyFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailValue,
+                    { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
-                  {weather.sys.sunrise ? formatTime(weather.sys.sunrise, weather.timezone) : 'N/A'}
+                  {formattedValues.sunrise}
                 </Text>
               </View>
               <View 
                 style={styles.detailItem}
                 accessible={true}
-                accessibilityLabel={`Sunset ${weather.sys.sunset ? formatTime(weather.sys.sunset, weather.timezone) : 'Not available'}`}
+                accessibilityLabel={`Sunset ${formattedValues.sunset}`}
               >
                 <Text 
                   variant="bodySmall" 
                   style={[
-                    detailLabelStyle,
-                    { fontSize: smallFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailLabel,
+                    { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
                   Sunset
@@ -277,11 +284,11 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
                 <Text 
                   variant="bodyMedium" 
                   style={[
-                    detailValueStyle,
-                    { fontSize: bodyFontSize, fontWeight: bodyFontWeight }
+                    themeStyles.detailValue,
+                    { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight }
                   ]}
                 >
-                  {weather.sys.sunset ? formatTime(weather.sys.sunset, weather.timezone) : 'N/A'}
+                  {formattedValues.sunset}
                 </Text>
               </View>
             </View>

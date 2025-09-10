@@ -2,29 +2,112 @@ import React from 'react';
 import { View, StyleSheet, Text, Image } from 'react-native';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { WeatherCondition } from '../../types';
-import { getWeatherIconPath } from '../../utils/weatherIcons';
+
+// Direct image imports for weather icons
+const weatherIcons = {
+  '01d': require('../../assets/images/weather-icons/sunny.png'),
+  '01n': require('../../assets/images/weather-icons/clear_night.png'),
+  '02d': require('../../assets/images/weather-icons/partly_cloudy.png'),
+  '02n': require('../../assets/images/weather-icons/cloudy_night_half.png'),
+  '03d': require('../../assets/images/weather-icons/light_cloudy.png'),
+  '03n': require('../../assets/images/weather-icons/cloudy_night_half.png'),
+  '04d': require('../../assets/images/weather-icons/cloudy.png'),
+  '04n': require('../../assets/images/weather-icons/cloudy_night_full.png'),
+  '09d': require('../../assets/images/weather-icons/light_rain.png'),
+  '09n': require('../../assets/images/weather-icons/light_rain.png'),
+  '10d': require('../../assets/images/weather-icons/rain.png'),
+  '10n': require('../../assets/images/weather-icons/rain.png'),
+  '11d': require('../../assets/images/weather-icons/heavy_storm.png'),
+  '11n': require('../../assets/images/weather-icons/heavy_storm.png'),
+  '13d': require('../../assets/images/weather-icons/storm1.png'),
+  '13n': require('../../assets/images/weather-icons/storm1.png'),
+  '50d': require('../../assets/images/weather-icons/windy.png'),
+  '50n': require('../../assets/images/weather-icons/windy.png'),
+};
+
+// Fallback emoji icons for weather conditions (only as last resort)
+const getWeatherEmoji = (iconCode: string): string => {
+  const emojiMap: { [key: string]: string } = {
+    '01d': '☀️', // clear sky day
+    '01n': '🌙', // clear sky night
+    '02d': '⛅', // few clouds day
+    '02n': '☁️', // few clouds night
+    '03d': '☁️', // scattered clouds day
+    '03n': '☁️', // scattered clouds night
+    '04d': '☁️', // broken clouds day
+    '04n': '☁️', // broken clouds night
+    '09d': '🌦️', // shower rain day
+    '09n': '🌦️', // shower rain night
+    '10d': '🌧️', // rain day
+    '10n': '🌧️', // rain night
+    '11d': '⛈️', // thunderstorm day
+    '11n': '⛈️', // thunderstorm night
+    '13d': '❄️', // snow day
+    '13n': '❄️', // snow night
+    '50d': '🌫️', // mist day
+    '50n': '🌫️', // mist night
+  };
+  return emojiMap[iconCode] || '☀️';
+};
 
 interface WeatherIconProps {
   condition: WeatherCondition;
   size?: number;
   color?: string;
+  accessibilityLabel?: string;
 }
 
 export const WeatherIcon: React.FC<WeatherIconProps> = ({
   condition,
   size = 64,
   color,
+  accessibilityLabel,
 }) => {
   const { effectiveTheme, theme } = useThemeContext();
-  // Get the custom weather icon image
-  const getWeatherIconImage = (iconCode: string) => {
-    return getWeatherIconPath(iconCode);
+  
+  // Get the weather icon image directly from our mapping
+  const getWeatherIconImage = (iconCode: string | undefined | null) => {
+    if (!iconCode) {
+      return weatherIcons['01d']; // Default to clear sky day
+    }
+    return weatherIcons[iconCode as keyof typeof weatherIcons] || weatherIcons['01d'];
   };
 
-  const weatherIconImage = getWeatherIconImage(condition.icon);
+  const weatherIconImage = getWeatherIconImage(condition?.icon);
+
+  // Check if we have a valid image source (require() should return a number for local images)
+  const hasValidImage = weatherIconImage && (typeof weatherIconImage === 'number' || (typeof weatherIconImage === 'object' && weatherIconImage.uri));
+  
+  // Generate accessibility label
+  const getAccessibilityLabel = () => {
+    if (accessibilityLabel) return accessibilityLabel;
+    return `${condition?.description || 'Weather'} icon`;
+  };
+  
+  // If no valid image, use emoji fallback
+  if (!hasValidImage) {
+    const emoji = getWeatherEmoji(condition?.icon || '01d');
+    return (
+      <View 
+        style={[styles.container, { width: size, height: size }]}
+        accessible={true}
+        accessibilityLabel={getAccessibilityLabel()}
+        accessibilityRole="image"
+      >
+        <Text style={[styles.emojiIcon, { fontSize: size * 0.8 }]}>
+          {emoji}
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
+    <View 
+      style={[styles.container, { width: size, height: size }]}
+      accessible={true}
+      accessibilityLabel={getAccessibilityLabel()}
+      accessibilityRole="image"
+    >
       <Image
         source={weatherIconImage}
         style={[
@@ -36,6 +119,10 @@ export const WeatherIcon: React.FC<WeatherIconProps> = ({
           }
         ]}
         resizeMode="contain"
+        accessibilityIgnoresInvertColors={true}
+        onError={(error) => {
+          console.warn('WeatherIcon: Failed to load image, using emoji fallback:', error.nativeEvent.error);
+        }}
       />
     </View>
   );
@@ -48,5 +135,21 @@ const styles = StyleSheet.create({
   },
   weatherIcon: {
     // Image styles are handled inline for dynamic sizing
+  },
+  emojiIcon: {
+    textAlign: 'center',
+    lineHeight: 1,
+  },
+  placeholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  placeholderText: {
+    color: '#666',
+    fontWeight: 'bold',
   },
 });

@@ -8,8 +8,21 @@ export const APP_CONFIG = {
     openWeatherMap: {
       baseUrl: 'https://api.openweathermap.org/data/2.5',
       geocodingUrl: 'https://api.openweathermap.org/geo/1.0',
-      // Using the working API key directly
-      apiKey: '358ab06272ef530c35a7640d33929064',
+      apiKey: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '',
+    },
+    groq: {
+      baseUrl: 'https://api.groq.com/openai/v1',
+      apiKey: process.env.EXPO_PUBLIC_GROQ_API_KEY || '',
+      model: 'llama-3.1-8b-instant',
+      maxTokens: 1000,
+      temperature: 0.7,
+    },
+    huggingface: {
+      baseUrl: 'https://api-inference.huggingface.co/models',
+      apiKey: process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY || '',
+      model: 'microsoft/DialoGPT-medium',
+      maxTokens: 500,
+      temperature: 0.7,
     },
   },
   
