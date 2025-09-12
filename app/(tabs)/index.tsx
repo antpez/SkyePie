@@ -2,20 +2,20 @@ import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from '
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { Text, FAB, Snackbar, Button, SegmentedButtons } from 'react-native-paper';
 import { useLocalSearchParams } from 'expo-router';
-import { ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts, WeatherIcon, TemperatureDisplay } from '../../src/components';
-import { NetworkErrorDisplay, ConsistentCard, WeatherSkeleton, UniversalHeader } from '../../src/components/common';
-import { FavoriteLocationCard } from '../../src/components/location';
-import { useLocation } from '../../src/hooks';
-import { useOfflineWeather } from '../../src/hooks/useOfflineWeather';
-import { useThemeContext } from '../../src/contexts/ThemeContext';
-import { useUnits } from '../../src/contexts/UnitsContext';
-import { useDatabase } from '../../src/contexts/DatabaseContext';
-import { LocationCoordinates, Location } from '../../src/types';
-import { APP_CONFIG } from '../../src/config/app';
-import { offlineCacheService, userService } from '../../src/services';
-import { formatTemperature, formatWindSpeed, formatHumidity, formatPressure, formatVisibility, formatTime, formatDayOfWeek } from '../../src/utils/formatters';
-import { performanceMonitor } from '../../src/utils/performanceMonitor';
-import '../../src/config/performance'; // Initialize performance monitoring
+import { ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts, WeatherIcon, TemperatureDisplay } from '../src/components';
+import { NetworkErrorDisplay, ConsistentCard, WeatherSkeleton, UniversalHeader } from '../src/components/common';
+import { FavoriteLocationCard } from '../src/components/location';
+import { useLocation } from '../src/hooks';
+import { useOfflineWeather } from '../src/hooks/useOfflineWeather';
+import { useThemeContext } from '../src/contexts/ThemeContext';
+import { useUnits } from '../src/contexts/UnitsContext';
+import { useDatabase } from '../src/contexts/DatabaseContext';
+import { LocationCoordinates, Location } from '../src/types';
+import { APP_CONFIG } from '../src/config/app';
+import { offlineCacheService, userService } from '../src/services';
+import { formatTemperature, formatWindSpeed, formatHumidity, formatPressure, formatVisibility, formatTime, formatDayOfWeek } from '../src/utils/formatters';
+import { performanceMonitor } from '../src/utils/performanceMonitor';
+import '../src/config/performance'; // Initialize performance monitoring
 
 const WeatherScreen = memo(() => {
   // Performance monitoring - only track render time, not every render

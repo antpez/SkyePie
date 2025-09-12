@@ -2,13 +2,13 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Snackbar } from 'react-native-paper';
 import { router } from 'expo-router';
-import { LocationSearch } from '../../src/components';
-import { UniversalHeader } from '../../src/components/common';
-import { useOfflineWeather } from '../../src/hooks/useOfflineWeather';
-import { useThemeContext } from '../../src/contexts/ThemeContext';
-import { LocationSearchResult, SearchHistoryItem, Location } from '../../src/types';
-import { APP_CONFIG } from '../../src/config/app';
-import { offlineCacheService } from '../../src/services';
+import { LocationSearch } from '../src/components';
+import { UniversalHeader } from '../src/components/common';
+import { useOfflineWeather } from '../src/hooks/useOfflineWeather';
+import { useThemeContext } from '../src/contexts/ThemeContext';
+import { LocationSearchResult, SearchHistoryItem, Location } from '../src/types';
+import { APP_CONFIG } from '../src/config/app';
+import { offlineCacheService } from '../src/services';
 
 export default function SearchScreen() {
   const { effectiveTheme, theme } = useThemeContext();

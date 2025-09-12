@@ -8,41 +8,11 @@
         "projectId": "c2589986-dccf-4d6f-8bfb-adc2d6bca8fa"
       }
     },
-    "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
-    "scheme": "skyepie",
-    "splash": {
-      "image": "./assets/splash/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.antpez.skyepie"
-    },
-    "android": {
-      "package": "com.antpez.skyepie",
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "INTERNET",
-        "ACCESS_NETWORK_STATE"
-      ]
-    },
     "web": {
       "bundler": "metro"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "This app needs access to location to provide accurate weather information."
-        }
-      ]
-    ]
+    }
   }
 }

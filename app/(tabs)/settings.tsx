@@ -1,11 +1,11 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { List, Switch, Divider, Text, Snackbar, Button } from 'react-native-paper';
-import { useThemeContext } from '../../src/contexts/ThemeContext';
-import { UniversalHeader } from '../../src/components/common';
-import { useDatabase } from '../../src/contexts/DatabaseContext';
-import { useUnits } from '../../src/contexts/UnitsContext';
-import { offlineCacheService, userService } from '../../src/services';
+import { useThemeContext } from '../src/contexts/ThemeContext';
+import { UniversalHeader } from '../src/components/common';
+import { useDatabase } from '../src/contexts/DatabaseContext';
+import { useUnits } from '../src/contexts/UnitsContext';
+import { offlineCacheService, userService } from '../src/services';
 
 export default function SettingsScreen() {
   const { themeMode, setTheme, effectiveTheme, isLoading, theme } = useThemeContext();
