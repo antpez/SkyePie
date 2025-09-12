@@ -182,14 +182,16 @@ export const createCodeSplitComponent = <P extends object>(
   componentName: string,
   importFunc: () => Promise<{ default: React.ComponentType<P> }>
 ) => {
-  const React = require('react');
+  const React = require('react') as typeof import('react');
   const LazyComponent = React.lazy(importFunc);
   
-  return React.forwardRef<any, P>((props, ref) => (
-    <React.Suspense fallback={<div>Loading {componentName}...</div>}>
-      <LazyComponent {...props} ref={ref} />
-    </React.Suspense>
-  ));
+  return React.forwardRef<any, P>((props: React.PropsWithoutRef<P>, ref: React.Ref<any>) => {
+    return React.createElement(
+      React.Suspense,
+      { fallback: React.createElement('div', null, `Loading ${componentName}...`) },
+      React.createElement(LazyComponent, { ...props, ref })
+    );
+  });
 };
 
 // Performance metrics collection
