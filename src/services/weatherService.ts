@@ -20,6 +20,13 @@ export class WeatherService {
   private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
   constructor(apiKey: string) {
+    // Validate API key
+    if (!apiKey || apiKey === 'your_api_key_here' || apiKey === '') {
+      console.error('❌ OpenWeatherMap API key is not configured!');
+      console.error('Please set EXPO_PUBLIC_OPENWEATHER_API_KEY in your .env file');
+      throw new Error('OpenWeatherMap API key is required. Please configure EXPO_PUBLIC_OPENWEATHER_API_KEY in your .env file');
+    }
+
     this.config = {
       baseUrl: APP_CONFIG.api.openWeatherMap.baseUrl,
       apiKey,

@@ -69,7 +69,7 @@ export class SearchHistoryRepository {
         [userId, limit]
       );
 
-      return results.map(row => ({
+      return results.map((row: any) => ({
         id: row.id,
         userId: row.user_id,
         query: row.query,
@@ -125,7 +125,7 @@ export class SearchHistoryRepository {
         [userId, limit]
       );
 
-      return results.map(row => row.query);
+      return results.map((row: any) => row.query);
     } catch (error) {
       console.error('Error getting recent queries:', error);
       return [];

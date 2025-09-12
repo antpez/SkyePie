@@ -28,7 +28,7 @@ export const useOfflineWeather = (apiKey?: string) => {
 
   // Memoize weather service creation to prevent recreation
   const weatherService = useMemo(() => {
-    if (apiKey && apiKey !== 'your_api_key_here') {
+    if (apiKey && apiKey !== 'your_api_key_here' && apiKey !== '') {
       return createWeatherService(apiKey);
     }
     return null;

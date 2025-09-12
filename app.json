@@ -25,6 +25,9 @@
         "image": "./assets/splash/android_splash_xxhdpi.png",
         "resizeMode": "contain",
         "backgroundColor": "#87CEEB"
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "ios": {
@@ -34,7 +37,14 @@
         "image": "./assets/splash/ios_splash_1024.png",
         "resizeMode": "contain",
         "backgroundColor": "#87CEEB"
-      }
-    }
+      },
+      "runtimeVersion": "1.0.0"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa"
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }

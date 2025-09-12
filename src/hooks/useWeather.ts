@@ -15,7 +15,7 @@ export const useWeather = (apiKey?: string) => {
   
   // Memoize weather service creation
   const weatherService = useMemo(() => {
-    if (apiKey && apiKey !== 'your_api_key_here') {
+    if (apiKey && apiKey !== 'your_api_key_here' && apiKey !== '') {
       if (!weatherServiceRef.current) {
         weatherServiceRef.current = createWeatherService(apiKey);
       }

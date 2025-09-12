@@ -1,3 +1,6 @@
+// Load environment variables
+import Constants from 'expo-constants';
+
 export const APP_CONFIG = {
   name: 'SkyePie',
   version: '1.0.0',
@@ -8,18 +11,18 @@ export const APP_CONFIG = {
     openWeatherMap: {
       baseUrl: 'https://api.openweathermap.org/data/2.5',
       geocodingUrl: 'https://api.openweathermap.org/geo/1.0',
-      apiKey: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '',
+      apiKey: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENWEATHER_API_KEY || '',
     },
     groq: {
       baseUrl: 'https://api.groq.com/openai/v1',
-      apiKey: process.env.EXPO_PUBLIC_GROQ_API_KEY || '',
+      apiKey: process.env.EXPO_PUBLIC_GROQ_API_KEY || Constants.expoConfig?.extra?.EXPO_PUBLIC_GROQ_API_KEY || '',
       model: 'llama-3.1-8b-instant',
       maxTokens: 1000,
       temperature: 0.7,
     },
     huggingface: {
       baseUrl: 'https://api-inference.huggingface.co/models',
-      apiKey: process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY || '',
+      apiKey: process.env.EXPO_PUBLIC_HUGGINGFACE_API_KEY || Constants.expoConfig?.extra?.EXPO_PUBLIC_HUGGINGFACE_API_KEY || '',
       model: 'microsoft/DialoGPT-medium',
       maxTokens: 500,
       temperature: 0.7,

@@ -1,9 +1,31 @@
-import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 import { performanceMonitor } from '../utils/performanceMonitor';
+
+// Platform-specific SQLite import to avoid web bundling issues
+let SQLite: any;
+if (Platform.OS === 'web') {
+  // Mock SQLite for web platform
+  SQLite = {
+    openDatabaseAsync: () => Promise.resolve(null),
+    execAsync: () => Promise.resolve(),
+    closeAsync: () => Promise.resolve(),
+  };
+} else {
+  SQLite = require('expo-sqlite');
+}
+
+// Type definitions for SQLite
+interface SQLiteDatabase {
+  execAsync: (sql: string) => Promise<void>;
+  closeAsync: () => Promise<void>;
+  runAsync: (sql: string, params?: any[]) => Promise<void>;
+  getFirstAsync: <T>(sql: string, params?: any[]) => Promise<T | null>;
+  getAllAsync: <T>(sql: string, params?: any[]) => Promise<T[]>;
+}
 
 class DatabaseConnection {
   private static instance: DatabaseConnection;
-  private db: SQLite.SQLiteDatabase | null = null;
+  private db: SQLiteDatabase | null = null;
 
   static getInstance(): DatabaseConnection {
     if (!DatabaseConnection.instance) {
@@ -24,7 +46,7 @@ class DatabaseConnection {
     });
   }
 
-  getDatabase(): SQLite.SQLiteDatabase | null {
+  getDatabase(): SQLiteDatabase | null {
     return this.db;
   }
 

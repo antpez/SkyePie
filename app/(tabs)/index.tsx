@@ -44,6 +44,11 @@ const WeatherScreen = memo(() => {
   // Get API key from config - memoized to prevent recreation
   const API_KEY = useMemo(() => APP_CONFIG.api.openWeatherMap.apiKey, []);
   
+  // Check if API key is configured
+  const isApiKeyConfigured = useMemo(() => {
+    return API_KEY && API_KEY !== 'your_api_key_here' && API_KEY !== '';
+  }, [API_KEY]);
+  
   const { 
     currentWeather, 
     forecast, 
@@ -442,6 +447,28 @@ const WeatherScreen = memo(() => {
             }}
             style={styles.fab}
           />
+        </View>
+      </View>
+    );
+  }
+
+  // Show API key configuration error
+  if (!isApiKeyConfigured) {
+    return (
+      <View style={themeStyles.container} key={`api-key-error-${effectiveTheme}`}>
+        <View style={styles.permissionContainer}>
+          <Text variant="headlineSmall" style={[styles.permissionTitle, themeStyles.onSurface]}>
+            API Key Required
+          </Text>
+          <Text variant="bodyLarge" style={[styles.permissionMessage, themeStyles.onSurface]}>
+            SkyePie needs an OpenWeatherMap API key to fetch weather data.
+          </Text>
+          <Text variant="bodyMedium" style={[styles.permissionSubtext, themeStyles.onSurfaceVariant]}>
+            1. Get a free API key from openweathermap.org{'\n'}
+            2. Create a .env file in the project root{'\n'}
+            3. Add: EXPO_PUBLIC_OPENWEATHER_API_KEY=your_key_here{'\n'}
+            4. Restart the app
+          </Text>
         </View>
       </View>
     );

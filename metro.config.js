@@ -19,4 +19,9 @@ config.resolver.alias = {
   '@/config': path.resolve(__dirname, 'src/config'),
 };
 
+// Exclude web platform for EAS updates to avoid expo-sqlite issues
+if (process.env.EXPO_UPDATE) {
+  config.resolver.platforms = ['ios', 'android', 'native'];
+}
+
 module.exports = config;
