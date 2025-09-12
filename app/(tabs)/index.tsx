@@ -528,16 +528,6 @@ const WeatherScreen = memo(() => {
         textColor={theme.colors.onSurface}
       />
       
-      {/* Modern header with location info */}
-      {selectedLocation && searchParams.name && (
-        <View style={[styles.modernHeader, { backgroundColor: theme.colors.surface }]}>
-          <Text variant="headlineSmall" style={[styles.modernLocationTitle, { color: theme.colors.onSurface }]}>
-            {searchParams.name}
-            {searchParams.state && `, ${searchParams.state}`}
-            {searchParams.country && `, ${searchParams.country}`}
-          </Text>
-        </View>
-      )}
 
       {/* Modern offline indicator */}
       {isOffline && (
@@ -709,10 +699,11 @@ const WeatherScreen = memo(() => {
             
             {showHourlyForecast ? (
               <View style={styles.hourlyForecastContainer}>
-                <Text variant="titleMedium" style={[styles.forecastTitle, { color: theme.colors.onSurface }]}>
-                  12-Hour Forecast
-                </Text>
-                <View style={styles.forecastToggleContainer}>
+                <View style={styles.forecastHeaderContainer}>
+                  <Text variant="titleLarge" style={[styles.forecastSectionTitle, { color: theme.colors.onSurface }]}>
+                    12-Hour Forecast
+                  </Text>
+                  <View style={styles.forecastToggleContainer}>
                   <SegmentedButtons
                     value={showHourlyForecast ? 'hourly' : 'daily'}
                     onValueChange={(value) => setShowHourlyForecast(value === 'hourly')}
@@ -744,6 +735,7 @@ const WeatherScreen = memo(() => {
                       }
                     }}
                   />
+                  </View>
                 </View>
                 <ScrollView 
                   horizontal 
@@ -768,10 +760,11 @@ const WeatherScreen = memo(() => {
               </View>
             ) : (
               <View style={styles.dailyForecastContainer}>
-                <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                  7-Day Forecast
-                </Text>
-                <View style={styles.forecastToggleContainer}>
+                <View style={styles.forecastHeaderContainer}>
+                  <Text variant="titleLarge" style={[styles.forecastSectionTitle, { color: theme.colors.onSurface }]}>
+                    7-Day Forecast
+                  </Text>
+                  <View style={styles.forecastToggleContainer}>
                   <SegmentedButtons
                     value={showHourlyForecast ? 'hourly' : 'daily'}
                     onValueChange={(value) => setShowHourlyForecast(value === 'hourly')}
@@ -803,6 +796,7 @@ const WeatherScreen = memo(() => {
                       }
                     }}
                   />
+                  </View>
                 </View>
                 <ScrollView 
                   horizontal 
@@ -929,7 +923,7 @@ const WeatherScreen = memo(() => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 20, // Added top padding for consistency
+    paddingTop: 100, // Space for UniversalHeader only
   },
   scrollView: {
     flex: 1,
@@ -972,8 +966,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   forecastContainer: {
-    marginHorizontal: 16,
-    marginLeft: 36, // 16 (weatherDisplayContainer margin) + 20 (weatherHeader padding) = 36
     marginBottom: 24,
   },
   forecastHeader: {
@@ -1127,11 +1119,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 20,
   },
+  // Forecast section title (separate from other section titles)
+  forecastSectionTitle: {
+    marginBottom: 16,
+    fontWeight: '700',
+    fontSize: 20,
+  },
+  // Forecast header container (title and buttons with margin)
+  forecastHeaderContainer: {
+    marginHorizontal: 36, // Align with favoritesContainer
+  },
   
   // Weather display styles (no cards)
   weatherDisplayContainer: {
     margin: 16,
-    marginTop: 120, // Space for UniversalHeader
   },
   // Removed gradient styles - no background
   weatherHeader: {
@@ -1197,21 +1198,21 @@ const styles = StyleSheet.create({
     fontWeight: '700', // Made bolder to match other section titles
   },
   hourlyScrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0, // No padding - cards float off screen edges
   },
   dailyScrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0, // No padding - cards float off screen edges
   },
   hourlyItem: {
     padding: 16,
-    marginRight: 12,
+    marginRight: 4, // Reduced spacing between icons
     borderRadius: 12,
     alignItems: 'center',
     minWidth: 80,
   },
   dailyItem: {
     padding: 16,
-    marginRight: 12,
+    marginRight: 4, // Reduced spacing between icons
     borderRadius: 12,
     alignItems: 'center',
     minWidth: 80,

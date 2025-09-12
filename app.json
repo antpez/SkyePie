@@ -1,8 +1,13 @@
 {
   "expo": {
     "name": "SkyePie",
-    "slug": "SkyePie",
+    "slug": "skyepie",
     "version": "1.0.0",
+    "extra": {
+      "eas": {
+        "projectId": "c2589986-dccf-4d6f-8bfb-adc2d6bca8fa"
+      }
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "skyepie",
@@ -16,10 +21,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.skyepie.app"
+      "bundleIdentifier": "com.antpez.skyepie"
     },
     "android": {
-      "package": "com.skyepie.app",
+      "package": "com.antpez.skyepie",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
