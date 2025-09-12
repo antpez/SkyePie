@@ -24,17 +24,6 @@
       }
     }
   },
-  "prebuild": {
-    "expo": {
-      "android": {
-        "icon": "./assets/android/mipmap-mdpi/Skyepie.png",
-        "adaptiveIcon": {
-          "foregroundImage": "./assets/android/mipmap-mdpi/Skyepie.png",
-          "backgroundColor": "#ffffff"
-        }
-      }
-    }
-  },
   "submit": {
     "production": {}
   }
