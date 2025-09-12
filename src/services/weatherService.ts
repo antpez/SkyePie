@@ -10,6 +10,7 @@ import {
 import { APP_CONFIG } from '../config/app';
 import { networkErrorHandler } from '../utils/networkErrorHandler';
 import { retryHandler } from '../utils/retryHandler';
+import { performanceMonitor } from '../utils/performanceMonitor';
 
 export class WeatherService {
   private static instance: WeatherService;
@@ -22,8 +23,8 @@ export class WeatherService {
     this.config = {
       baseUrl: APP_CONFIG.api.openWeatherMap.baseUrl,
       apiKey,
-      timeout: 10000,
-      retryAttempts: 3,
+      timeout: 5000, // Reduced from 10000ms to 5000ms
+      retryAttempts: 2, // Reduced from 3 to 2
     };
 
     this.api = axios.create({
@@ -37,10 +38,13 @@ export class WeatherService {
       headers: {
         'Accept': 'application/json',
         'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive', // Enable keep-alive
+        'Cache-Control': 'no-cache', // Disable caching at HTTP level
       },
       // Enable keep-alive for faster subsequent requests
-      maxRedirects: 3,
+      maxRedirects: 2, // Reduced from 3 to 2
       validateStatus: (status) => status < 500, // Don't throw on 4xx errors
+      // React Native handles connection pooling automatically
     });
 
     this.setupInterceptors();
@@ -127,6 +131,8 @@ export class WeatherService {
     longitude: number,
     units: 'metric' | 'imperial' = 'metric'
   ): Promise<CurrentWeather> {
+    const startTime = performance.now();
+    
     const params = { lat: latitude, lon: longitude, units };
     const cacheKey = this.getCacheKey('/weather', params);
     
@@ -136,23 +142,37 @@ export class WeatherService {
       return cachedData;
     }
 
-    return retryHandler.executeWithRetry(
-      async () => {
-        const response: AxiosResponse<CurrentWeather> = await this.api.get('/weather', {
-          params,
-        });
+    try {
+      const result = await retryHandler.executeWithRetry(
+        async () => {
+          const response: AxiosResponse<CurrentWeather> = await this.api.get('/weather', {
+            params,
+          });
 
-        // Cache the result
-        this.setCachedData(cacheKey, response.data);
-        return response.data;
-      },
-      {
-        context: 'WeatherService.getCurrentWeather',
-        onRetry: (attempt, error) => {
-          console.warn(`Retrying getCurrentWeather (attempt ${attempt}):`, error.message);
+          // Cache the result
+          this.setCachedData(cacheKey, response.data);
+          return response.data;
         },
+        {
+          context: 'WeatherService.getCurrentWeather',
+          onRetry: (attempt, error) => {
+            console.warn(`Retrying getCurrentWeather (attempt ${attempt}):`, error.message);
+          },
+        }
+      );
+      
+      return result;
+    } finally {
+      // Only log if it took longer than 100ms
+      const duration = performance.now() - startTime;
+      if (__DEV__ && duration > 100) {
+        console.log(`🐌 WeatherService.getCurrentWeather: ${duration.toFixed(2)}ms`, { 
+          latitude, 
+          longitude, 
+          units 
+        });
       }
-    );
+    }
   }
 
   async getWeatherForecast(
@@ -160,27 +180,29 @@ export class WeatherService {
     longitude: number,
     units: 'metric' | 'imperial' = 'metric'
   ): Promise<WeatherForecast> {
-    const params = { lat: latitude, lon: longitude, units };
-    const cacheKey = this.getCacheKey('/forecast', params);
-    
-    // Check cache first
-    const cachedData = this.getCachedData<WeatherForecast>(cacheKey);
-    if (cachedData) {
-      return cachedData;
-    }
+    return performanceMonitor.measureAsync('WeatherService.getWeatherForecast', async () => {
+      const params = { lat: latitude, lon: longitude, units };
+      const cacheKey = this.getCacheKey('/forecast', params);
+      
+      // Check cache first
+      const cachedData = this.getCachedData<WeatherForecast>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
 
-    try {
-      const response: AxiosResponse<WeatherForecast> = await this.api.get('/forecast', {
-        params,
-      });
+      try {
+        const response: AxiosResponse<WeatherForecast> = await this.api.get('/forecast', {
+          params,
+        });
 
-      // Cache the result
-      this.setCachedData(cacheKey, response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching weather forecast:', error);
-      throw error;
-    }
+        // Cache the result
+        this.setCachedData(cacheKey, response.data);
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching weather forecast:', error);
+        throw error;
+      }
+    }, { latitude, longitude, units });
   }
 
   async searchLocations(query: string, limit: number = 5): Promise<LocationSearchResult[]> {

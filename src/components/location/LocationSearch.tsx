@@ -1,6 +1,6 @@
 import React, { useState, useCallback, memo } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
-import { Searchbar, Card, Text, List, IconButton } from 'react-native-paper';
+import { View, StyleSheet, FlatList, ScrollView } from 'react-native';
+import { Searchbar, Text, List, IconButton } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { LocationSearchResult, SearchHistoryItem } from '../../types';
 import { debounce } from '../../utils/helpers';
@@ -117,7 +117,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
           </View>
         )}
         onPress={() => handleLocationSelect(item)}
-        style={styles.resultItem}
+        style={styles.resultItemContent}
         accessibilityLabel={`Select ${item.name}, ${item.state ? `${item.state}, ` : ''}${item.country}`}
       />
     );
@@ -133,7 +133,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
   );
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <Searchbar
         placeholder={placeholder}
         value={query}
@@ -143,64 +143,73 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
       />
       
       {(showHistory || results.length > 0) && (
-        <Card style={[styles.resultsCard, { backgroundColor: theme.colors.surface }]}>
-          <Card.Content style={styles.resultsContent}>
-            {showHistory && searchHistory.length > 0 && (
-              <>
-                <View style={[styles.sectionHeader, { borderBottomColor: theme.colors.outline }]}>
-                  <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>Recent Searches</Text>
-                  {onClearHistory && (
-                    <Text 
-                      variant="bodySmall" 
-                      style={[styles.clearButton, { color: theme.colors.primary }]}
-                      onPress={onClearHistory}
-                    >
-                      Clear
-                    </Text>
-                  )}
-                </View>
-                <FlatList
-                  data={searchHistory.slice(0, 5)}
-                  renderItem={renderHistoryItem}
-                  keyExtractor={(item) => item.id}
-                  style={styles.historyList}
-                />
-              </>
-            )}
-            
-            {isSearching && (
-              <View style={styles.loadingContainer}>
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  Searching...
+        <View style={styles.resultsContainer}>
+          {showHistory && searchHistory.length > 0 && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                  Recent Searches
+                </Text>
+                {onClearHistory && (
+                  <Text 
+                    variant="bodyMedium" 
+                    style={[styles.clearButton, { color: theme.colors.primary }]}
+                    onPress={onClearHistory}
+                  >
+                    Clear
+                  </Text>
+                )}
+              </View>
+              <View style={styles.historyContainer}>
+                {searchHistory.slice(0, 5).map((item) => (
+                  <View key={item.id} style={[styles.historyItem, { backgroundColor: theme.colors.surfaceVariant }]}>
+                    <List.Item
+                      title={item.query}
+                      left={(props) => <List.Icon {...props} icon="history" />}
+                      onPress={() => handleHistoryItemPress(item)}
+                      style={styles.historyItemContent}
+                    />
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+          
+          {isSearching && (
+            <View style={styles.loadingContainer}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                Searching...
+              </Text>
+            </View>
+          )}
+          
+          {results.length > 0 && !isSearching && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                  Search Results
                 </Text>
               </View>
-            )}
-            
-            {results.length > 0 && !isSearching && (
-              <>
-                <View style={[styles.sectionHeader, { borderBottomColor: theme.colors.outline }]}>
-                  <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>Search Results</Text>
-                </View>
-                <FlatList
-                  data={results}
-                  renderItem={renderSearchResult}
-                  keyExtractor={(item, index) => `${item.latitude}-${item.longitude}-${index}`}
-                  style={styles.resultsList}
-                />
-              </>
-            )}
-            
-            {!isSearching && query.length >= 2 && results.length === 0 && (
-              <View style={styles.noResultsContainer}>
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  No locations found for "{query}"
-                </Text>
+              <View style={styles.resultsListContainer}>
+                {results.map((item, index) => (
+                  <View key={`${item.latitude}-${item.longitude}-${index}`} style={[styles.resultItem, { backgroundColor: theme.colors.surfaceVariant }]}>
+                    {renderSearchResult({ item })}
+                  </View>
+                ))}
               </View>
-            )}
-          </Card.Content>
-        </Card>
+            </>
+          )}
+          
+          {!isSearching && query.length >= 2 && results.length === 0 && (
+            <View style={styles.noResultsContainer}>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                No locations found for "{query}"
+              </Text>
+            </View>
+          )}
+        </View>
       )}
-    </View>
+    </ScrollView>
   );
 });
 
@@ -208,44 +217,54 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 20,
+  },
   searchbar: {
     margin: 16,
     elevation: 2,
   },
-  resultsCard: {
+  resultsContainer: {
     marginHorizontal: 16,
     marginBottom: 16,
-    elevation: 2,
-  },
-  resultsContent: {
-    padding: 0,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontWeight: '600',
+    fontSize: 18,
   },
   clearButton: {
-    // Color will be set dynamically in component
+    fontWeight: '500',
   },
-  resultsList: {
-    maxHeight: 200,
+  historyContainer: {
+    gap: 12,
+    marginBottom: 24,
   },
-  historyList: {
-    maxHeight: 150,
+  historyItem: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  historyItemContent: {
+    paddingHorizontal: 16,
+  },
+  resultsListContainer: {
+    gap: 12,
   },
   resultItem: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  resultItemContent: {
     paddingHorizontal: 16,
   },
   resultActions: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  historyItem: {
-    paddingHorizontal: 16,
   },
   loadingContainer: {
     padding: 16,

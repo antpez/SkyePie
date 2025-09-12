@@ -1,11 +1,12 @@
 import React, { useMemo, memo, useCallback } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Text } from 'react-native-paper';
+import { Card, Text, Chip } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { useUnits } from '../../contexts/UnitsContext';
 import { ForecastItem } from '../../types';
 import { WeatherIcon } from './WeatherIcon';
-import { formatTemperature, formatTime } from '../../utils/formatters';
+import { formatTemperature, formatTime, formatWindSpeed, formatHumidity } from '../../utils/formatters';
 
 interface HourlyForecastProps {
   forecast: ForecastItem[];
@@ -17,29 +18,38 @@ export const HourlyForecast: React.FC<HourlyForecastProps> = memo(({
   const { effectiveTheme, theme } = useThemeContext();
   const { units } = useUnits();
 
-  // Filter to show next 12 hours (4 items since we get 3-hour intervals)
-  const next12Hours = useMemo(() => {
-    return forecast.slice(0, 4);
+  // Filter to show next 24 hours (8 items since we get 3-hour intervals)
+  const next24Hours = useMemo(() => {
+    return forecast.slice(0, 8);
   }, [forecast]);
 
   // Memoize processed forecast items to prevent recalculation
   const processedForecastItems = useMemo(() => {
-    return next12Hours.map((item, index) => ({
+    return next24Hours.map((item, index) => ({
       id: `${item.dt}-${index}`,
       time: formatTime(item.dt),
       temperature: formatTemperature(item.main.temp, units.temperature),
+      feelsLike: formatTemperature(item.main.feels_like, units.temperature),
       description: item.weather[0]?.description || '',
-      condition: item.weather[0]
+      condition: item.weather[0],
+      humidity: formatHumidity(item.main.humidity),
+      windSpeed: formatWindSpeed(item.wind.speed, units.windSpeed),
+      windDirection: item.wind.deg,
+      precipitation: item.pop ? Math.round(item.pop * 100) : 0,
+      pressure: item.main.pressure,
+      visibility: item.visibility ? Math.round(item.visibility / 1000) : null
     }));
-  }, [next12Hours, units.temperature]);
+  }, [next24Hours, units.temperature, units.windSpeed]);
 
   // Memoize theme styles
   const themeStyles = useMemo(() => ({
     time: [styles.time, { color: theme.colors.onSurface }],
     temperature: [styles.temperature, { color: theme.colors.onSurface }],
+    feelsLike: [styles.feelsLike, { color: theme.colors.onSurfaceVariant }],
     description: [styles.description, { color: theme.colors.onSurfaceVariant }],
-    card: [styles.card, { backgroundColor: theme.colors.surface }],
-    title: [styles.title, { color: theme.colors.onSurface }]
+    title: [styles.title, { color: theme.colors.onSurface }],
+    detailText: [styles.detailText, { color: theme.colors.onSurfaceVariant }],
+    chip: { backgroundColor: theme.colors.surfaceVariant }
   }), [theme.colors]);
 
   // Memoize render function to prevent recreation
@@ -49,44 +59,73 @@ export const HourlyForecast: React.FC<HourlyForecastProps> = memo(({
         <Text style={themeStyles.time}>{item.time}</Text>
         <WeatherIcon
           condition={item.condition}
-          size={32}
+          size={36}
         />
         <Text style={themeStyles.temperature}>{item.temperature}</Text>
+        <Text style={themeStyles.feelsLike}>Feels {item.feelsLike}</Text>
         <Text style={themeStyles.description} numberOfLines={1}>
           {item.description}
         </Text>
+        
+        {/* Additional details */}
+        <View style={styles.detailsContainer}>
+          <View style={styles.detailRow}>
+            <MaterialCommunityIcons 
+              name="water" 
+              size={12} 
+              color={theme.colors.onSurfaceVariant} 
+            />
+            <Text style={themeStyles.detailText}>{item.humidity}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <MaterialCommunityIcons 
+              name="weather-windy" 
+              size={12} 
+              color={theme.colors.onSurfaceVariant} 
+            />
+            <Text style={themeStyles.detailText}>{item.windSpeed}</Text>
+          </View>
+          
+          {item.precipitation > 0 && (
+            <Chip 
+              mode="outlined" 
+              compact 
+              style={[styles.precipitationChip, themeStyles.chip]}
+              textStyle={styles.chipText}
+            >
+              {item.precipitation}%
+            </Chip>
+          )}
+        </View>
       </View>
     );
-  }, [themeStyles]);
+  }, [themeStyles, theme.colors]);
 
-  if (!next12Hours || next12Hours.length === 0) {
+  if (!next24Hours || next24Hours.length === 0) {
     return null;
   }
 
   return (
-    <Card style={themeStyles.card}>
-      <Card.Content style={styles.content}>
-        <Text variant="titleMedium" style={themeStyles.title}>
-          12-Hour Forecast
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {processedForecastItems.map(renderHourlyItem)}
-        </ScrollView>
-      </Card.Content>
-    </Card>
+    <View style={styles.container}>
+      <Text variant="titleMedium" style={themeStyles.title}>
+        24-Hour Forecast
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {processedForecastItems.map(renderHourlyItem)}
+      </ScrollView>
+    </View>
   );
 });
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
     marginVertical: 4,
     marginHorizontal: 16,
-  },
-  content: {
     padding: 16,
   },
   title: {
@@ -96,28 +135,54 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 0,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   hourlyItem: {
     alignItems: 'center',
-    flex: 1,
-    paddingHorizontal: 12,
+    minWidth: 100,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
   time: {
     fontSize: 12,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   temperature: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
     marginTop: 4,
   },
-  description: {
+  feelsLike: {
     fontSize: 10,
-    textAlign: 'center',
     marginTop: 2,
+    textAlign: 'center',
+  },
+  description: {
+    fontSize: 9,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  detailsContainer: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  detailText: {
+    fontSize: 9,
+    marginLeft: 2,
+  },
+  precipitationChip: {
+    marginTop: 2,
+    height: 20,
+  },
+  chipText: {
+    fontSize: 8,
   },
 });
 

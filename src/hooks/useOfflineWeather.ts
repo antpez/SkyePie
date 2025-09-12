@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CurrentWeather, WeatherForecast, LocationSearchResult, TemperatureUnit, Location, WeatherAlert } from '../types';
 import { createWeatherService } from '../services';
 import { offlineCacheService, userService } from '../services';
 import { APP_CONFIG } from '../config/app';
 import { useNetworkStatus } from './useNetworkStatus';
 import { NetworkError } from '../types/networkErrors';
+import { performanceMonitor } from '../utils/performanceMonitor';
 
 export const useOfflineWeather = (apiKey?: string) => {
   const [currentWeather, setCurrentWeather] = useState<CurrentWeather | null>(null);
@@ -25,7 +26,13 @@ export const useOfflineWeather = (apiKey?: string) => {
     setIsOffline(!isOnline);
   }, [isOnline]);
 
-  const weatherService = apiKey && apiKey !== 'your_api_key_here' ? createWeatherService(apiKey) : null;
+  // Memoize weather service creation to prevent recreation
+  const weatherService = useMemo(() => {
+    if (apiKey && apiKey !== 'your_api_key_here') {
+      return createWeatherService(apiKey);
+    }
+    return null;
+  }, [apiKey]);
 
   // Helper function to ensure user is initialized and get current user ID
   const ensureUserInitialized = useCallback(async (): Promise<string> => {
@@ -102,6 +109,8 @@ export const useOfflineWeather = (apiKey?: string) => {
       throw new Error('Weather service not initialized. Please provide an API key.');
     }
 
+    const startTime = performance.now();
+    
     try {
       // Don't set loading to true immediately - show cached data first
       if (!forceRefresh) {
@@ -182,8 +191,20 @@ export const useOfflineWeather = (apiKey?: string) => {
       throw err;
     } finally {
       setIsLoading(false);
+      
+      // Only log if it took longer than 100ms
+      const duration = performance.now() - startTime;
+      if (__DEV__ && duration > 100) {
+        console.log(`🐌 fetchCurrentWeather: ${duration.toFixed(2)}ms`, { 
+          latitude, 
+          longitude, 
+          units, 
+          forceRefresh,
+          isOnline 
+        });
+      }
     }
-  }, [weatherService, ensureUserInitialized, createLocationObject]);
+  }, [weatherService, ensureUserInitialized, createLocationObject, isOnline]);
 
   const fetchForecast = useCallback(async (
     latitude: number, 

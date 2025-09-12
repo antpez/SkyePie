@@ -25,104 +25,136 @@ export const fontFamilies = {
 } as const;
 
 export const typography = {
-  // Display styles
+  // Display styles - More modern and bold
   displayLarge: {
-    fontFamily: fontFamilies.light,
+    fontFamily: fontFamilies.bold,
     fontSize: fontSizes.largeDisplay,
     lineHeight: lineHeights.largeDisplay,
-    letterSpacing: -0.25,
+    letterSpacing: -0.5,
+    fontWeight: '700',
   },
   displayMedium: {
-    fontFamily: fontFamilies.light,
+    fontFamily: fontFamilies.bold,
     fontSize: fontSizes.display,
     lineHeight: lineHeights.display,
-    letterSpacing: 0,
+    letterSpacing: -0.25,
+    fontWeight: '600',
   },
   displaySmall: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.bold,
     fontSize: fontSizes.xxxl,
     lineHeight: lineHeights.xxxl,
     letterSpacing: 0,
+    fontWeight: '600',
   },
   
-  // Headline styles
+  // Headline styles - Better hierarchy
   headlineLarge: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.bold,
     fontSize: fontSizes.xxxl,
     lineHeight: lineHeights.xxxl,
-    letterSpacing: 0,
+    letterSpacing: -0.25,
+    fontWeight: '700',
   },
   headlineMedium: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.bold,
     fontSize: fontSizes.xxl,
     lineHeight: lineHeights.xxl,
     letterSpacing: 0,
+    fontWeight: '600',
   },
   headlineSmall: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.medium,
     fontSize: fontSizes.xl,
     lineHeight: lineHeights.xl,
     letterSpacing: 0,
+    fontWeight: '600',
   },
   
-  // Title styles
+  // Title styles - More prominent
   titleLarge: {
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.bold,
     fontSize: fontSizes.lg,
     lineHeight: lineHeights.lg,
     letterSpacing: 0,
+    fontWeight: '700',
   },
   titleMedium: {
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.bold,
     fontSize: fontSizes.md,
     lineHeight: lineHeights.md,
-    letterSpacing: 0.15,
+    letterSpacing: 0.1,
+    fontWeight: '600',
   },
   titleSmall: {
     fontFamily: fontFamilies.medium,
     fontSize: fontSizes.sm,
     lineHeight: lineHeights.sm,
     letterSpacing: 0.1,
+    fontWeight: '600',
   },
   
-  // Body styles
+  // Body styles - Improved readability
   bodyLarge: {
     fontFamily: fontFamilies.regular,
     fontSize: fontSizes.md,
     lineHeight: lineHeights.lg,
-    letterSpacing: 0.15,
+    letterSpacing: 0.1,
+    fontWeight: '400',
   },
   bodyMedium: {
     fontFamily: fontFamilies.regular,
     fontSize: fontSizes.sm,
     lineHeight: lineHeights.md,
-    letterSpacing: 0.25,
+    letterSpacing: 0.15,
+    fontWeight: '400',
   },
   bodySmall: {
     fontFamily: fontFamilies.regular,
     fontSize: fontSizes.xs,
     lineHeight: lineHeights.sm,
-    letterSpacing: 0.4,
+    letterSpacing: 0.25,
+    fontWeight: '400',
   },
   
-  // Label styles
+  // Label styles - More distinct
   labelLarge: {
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.bold,
     fontSize: fontSizes.sm,
     lineHeight: lineHeights.sm,
     letterSpacing: 0.1,
+    fontWeight: '600',
   },
   labelMedium: {
     fontFamily: fontFamilies.medium,
     fontSize: fontSizes.xs,
     lineHeight: lineHeights.xs,
     letterSpacing: 0.5,
+    fontWeight: '500',
   },
   labelSmall: {
     fontFamily: fontFamilies.medium,
     fontSize: fontSizes.xs,
     lineHeight: lineHeights.xs,
     letterSpacing: 0.5,
+    fontWeight: '500',
+  },
+  
+  // Additional modern styles
+  caption: {
+    fontFamily: fontFamilies.regular,
+    fontSize: fontSizes.xs,
+    lineHeight: lineHeights.xs,
+    letterSpacing: 0.4,
+    fontWeight: '400',
+  },
+  overline: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontSizes.xs,
+    lineHeight: lineHeights.xs,
+    letterSpacing: 1.5,
+    fontWeight: '500',
+    textTransform: 'uppercase',
   },
 } as const;
 

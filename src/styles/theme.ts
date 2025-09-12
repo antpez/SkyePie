@@ -41,9 +41,16 @@ export const lightTheme = {
     onBackground: colors.onBackground,
     outline: colors.outline,
     outlineVariant: colors.outlineVariant,
+    // Additional modern colors
+    accent: colors.accent,
+    success: colors.success,
+    warning: colors.warning,
+    info: colors.info,
+    glass: colors.glass,
+    glassBorder: colors.glassBorder,
   },
   fonts: configureFonts({ config: fontConfig }),
-  roundness: borderRadius.md,
+  roundness: borderRadius.lg, // Increased for modern look
 };
 
 export const darkTheme = {
@@ -65,9 +72,16 @@ export const darkTheme = {
     onBackground: colors.onBackgroundDark,
     outline: colors.gray600,
     outlineVariant: colors.gray700,
+    // Additional modern colors
+    accent: colors.accent,
+    success: colors.success,
+    warning: colors.warning,
+    info: colors.info,
+    glass: colors.glassDark,
+    glassBorder: colors.glassBorder,
   },
   fonts: configureFonts({ config: fontConfig }),
-  roundness: borderRadius.md,
+  roundness: borderRadius.lg, // Increased for modern look
 };
 
 export const customSpacing = {

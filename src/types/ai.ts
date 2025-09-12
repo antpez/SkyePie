@@ -1,50 +1,63 @@
 export interface ClothingRecommendation {
+  id: string;
   category: 'top' | 'bottom' | 'outerwear' | 'accessories' | 'footwear';
   item: string;
+  description: string;
   reason: string;
-  priority: 'essential' | 'recommended' | 'optional';
+  temperatureRange: {
+    min: number;
+    max: number;
+  };
+  weatherConditions: string[];
+  confidence: number; // 0-1
+  priority?: 'essential' | 'recommended' | 'optional';
 }
 
 export interface ActivityRecommendation {
-  activity: string;
-  suitability: 'excellent' | 'good' | 'fair' | 'poor';
-  reason: string;
-  duration?: string;
-  location?: 'indoor' | 'outdoor' | 'both';
-  equipment?: string[];
-}
-
-export interface WeatherPattern {
-  type: 'temperature_trend' | 'precipitation_pattern' | 'wind_pattern' | 'seasonal_shift';
+  id: string;
+  name: string;
   description: string;
+  category: 'outdoor' | 'indoor' | 'sports' | 'leisure' | 'work';
+  weatherConditions: string[];
+  temperatureRange: {
+    min: number;
+    max: number;
+  };
+  duration: number; // in minutes
+  difficulty: 'easy' | 'medium' | 'hard';
   confidence: number; // 0-1
-  impact: 'positive' | 'neutral' | 'negative';
-  recommendation: string;
-}
-
-export interface MoodAnalysis {
-  weatherMood: 'energetic' | 'calm' | 'cozy' | 'adventurous' | 'cautious' | 'neutral';
-  confidence: number; // 0-1
-  factors: string[];
-  suggestions: string[];
+  suitability?: string;
+  location?: string;
+  equipment?: string[];
 }
 
 export interface PersonalizedInsight {
   id: string;
-  type: 'clothing' | 'activity' | 'pattern' | 'mood' | 'health' | 'general';
+  type: 'weather_trend' | 'health_tip' | 'activity_suggestion' | 'clothing_tip' | 'general';
   title: string;
   message: string;
   priority: 'low' | 'medium' | 'high';
   validUntil: Date;
-  isActive: boolean;
+  confidence: number; // 0-1
+  isActive?: boolean;
 }
 
 export interface UserPreferences {
+  id: string;
+  userId: string;
   clothingStyle: 'casual' | 'formal' | 'sporty' | 'outdoor';
-  activityLevel: 'low' | 'moderate' | 'high';
-  healthConditions: string[];
-  skinType: number; // 1-6
-  allergies: string[];
-  preferredActivities: string[];
+  activityLevel: 'low' | 'medium' | 'high';
   weatherSensitivity: 'low' | 'medium' | 'high';
+  preferredActivities: string[];
+  clothingBrands: string[];
+  colorPreferences: string[];
+  sizePreferences: {
+    top: string;
+    bottom: string;
+    footwear: string;
+  };
+  allergies: string[];
+  healthConditions: string[];
+  createdAt: Date;
+  updatedAt: Date;
 }

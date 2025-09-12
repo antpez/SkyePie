@@ -40,12 +40,21 @@ This is the **core screen** users see most often.
 - Optional: Feels-like temperature, humidity, or wind speed (can be toggled in settings)
 
 **📅 Bottom Section**
-- **7-Day Forecast Row**
+- **Forecast Toggle** - Switch between Daily and Hourly views
+- **7-Day Forecast Row** (Daily view)
   - Horizontal scrollable row
   - Each day shows:
     - Day of the week (e.g., Mon, Tue)
     - Weather icon (e.g., 🌧️, ☀️, ⛅)
     - High / low temperature
+- **24-Hour Forecast Row** (Hourly view)
+  - Horizontal scrollable row
+  - Each hour shows:
+    - Time (e.g., 2PM, 5PM)
+    - Weather icon and condition
+    - Temperature and feels-like
+    - Humidity, wind speed, and precipitation probability
+- **Favorite Locations** - Quick access to saved locations with weather previews
 
 ### 3. Search & Location Handling
 - Users can tap into the **search field** to:
@@ -54,7 +63,14 @@ This is the **core screen** users see most often.
   - Select a location to view its weather
 - Recent searches appear below the field for quick access
 
-### 4. Permissions & Location Services
+### 4. Favorites Management
+- **Integrated Favorites** - Saved locations displayed on main weather screen
+- **Weather Preview Cards** - Each favorite shows current weather at a glance
+- **Real-time Updates** - Weather data refreshes automatically
+- **Easy Management** - Add/remove favorites with simple gestures
+- **Quick Navigation** - Tap any favorite to instantly view its weather
+
+### 5. Permissions & Location Services
 - **On first launch:**
   - App requests **location permission**
   - If denied, user is redirected to manual search mode
@@ -69,10 +85,18 @@ This is the **core screen** users see most often.
 ### Core Functionality
 - **Swipe to refresh**: Users can pull down to refresh weather data
 - **Light/Dark mode**: The interface adapts to system theme
+- **24-Hour Hourly Forecast**: Detailed hourly weather with comprehensive data
+- **Weather Preview Cards**: Real-time weather in favorites list
+
+### Navigation & Tabs
+- **Weather Tab**: Main weather screen with current conditions, forecasts, and favorite locations
+- **Search Tab**: Location search with autocomplete and history
+- **Settings Tab**: App configuration and preferences
 
 ### Error Handling
 - **Network unavailable** → show cached last known weather + message
 - **Location not found** → show friendly error + allow re-entry
+- **API failures** → comprehensive error states with user-friendly messages
 
 ---
 
@@ -97,19 +121,41 @@ Must support:
 
 ---
 
-## 🔮 Future Enhancements (Optional)
+## 🔮 Future Enhancements
 
-### Phase 2 Features
-- Hourly forecast view (toggle from main screen)
-- Saved locations list for fast switching
-- Widgets for home screen
-- Notifications for severe weather alerts
+### ✅ Phase 2 Features (COMPLETED)
+- ✅ **Enhanced Hourly Forecast View** - 24-hour detailed forecast with temperature, humidity, wind speed, and precipitation probability
+- ✅ **Weather Preview Cards in Favorites** - Real-time weather data displayed directly in the favorites list for quick access
 
-### Phase 3 Features
-- Weather maps integration
+### Phase 3 Features (Future)
 - Air quality index
 - UV index and sun protection recommendations
 - Weather-based activity suggestions
+
+---
+
+## 🚀 Phase 2 Implementation Details
+
+### Enhanced Hourly Forecast
+- **Extended from 12 to 24 hours** of forecast data
+- **Added detailed information**: feels-like temperature, humidity, wind speed, precipitation probability
+- **Improved UI**: Better layout with icons, chips for precipitation, and more detailed weather information
+- **Enhanced styling**: More compact and informative design with proper spacing and typography
+
+### Weather Preview Cards in Favorites
+- **Created `FavoriteLocationCard` component** with real-time weather previews
+- **Added weather data**: Current temperature, condition, and weather icon for each favorite location
+- **Improved UX**: Quick weather glance without opening the full weather screen
+- **Loading states**: Proper loading and error handling for weather data
+- **Performance optimized**: Efficient API calls and caching
+
+
+### Technical Improvements
+- **TypeScript compliance**: All components fully typed and error-free
+- **Performance optimization**: Memoized components and efficient re-renders
+- **Accessibility support**: Proper accessibility labels and screen reader support
+- **Error handling**: Comprehensive error states and fallback mechanisms
+- **Code organization**: Clean component structure with proper separation of concerns
 
 ---
 

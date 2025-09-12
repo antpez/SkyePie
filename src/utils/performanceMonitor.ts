@@ -20,6 +20,8 @@ class PerformanceMonitor {
   private metrics: Map<string, PerformanceMetric> = new Map();
   private stats: Map<string, PerformanceStats> = new Map();
   private isEnabled: boolean = __DEV__; // Only enable in development
+  private logThreshold: number = 100; // Only log operations taking more than 100ms
+  private logLevel: 'none' | 'slow' | 'all' = 'slow'; // Log level: none, slow, or all
 
   startTiming(name: string, metadata?: Record<string, any>): void {
     if (!this.isEnabled) return;
@@ -50,9 +52,16 @@ class PerformanceMonitor {
     // Update stats
     this.updateStats(name, duration);
 
-    // Log in development
-    if (__DEV__) {
-      console.log(`⏱️ ${name}: ${duration.toFixed(2)}ms`, metric.metadata);
+    // Log based on configuration
+    if (__DEV__ && this.logLevel !== 'none') {
+      const isSlowOperation = duration > this.logThreshold;
+      const isError = metric.metadata?.error;
+      const shouldLog = this.logLevel === 'all' || (this.logLevel === 'slow' && (isSlowOperation || isError));
+      
+      if (shouldLog) {
+        const emoji = isError ? '❌' : isSlowOperation ? '🐌' : '⏱️';
+        console.log(`${emoji} ${name}: ${duration.toFixed(2)}ms`, metric.metadata);
+      }
     }
 
     // Remove from active metrics
@@ -151,6 +160,22 @@ class PerformanceMonitor {
   isMonitoringEnabled(): boolean {
     return this.isEnabled;
   }
+
+  // Configure logging behavior
+  setLogLevel(level: 'none' | 'slow' | 'all'): void {
+    this.logLevel = level;
+  }
+
+  setLogThreshold(threshold: number): void {
+    this.logThreshold = threshold;
+  }
+
+  getLogConfig(): { level: string; threshold: number } {
+    return {
+      level: this.logLevel,
+      threshold: this.logThreshold,
+    };
+  }
 }
 
 // Create singleton instance
@@ -167,6 +192,9 @@ export const usePerformanceMonitor = () => {
     getSummary: performanceMonitor.getSummary.bind(performanceMonitor),
     clearStats: performanceMonitor.clearStats.bind(performanceMonitor),
     isEnabled: performanceMonitor.isMonitoringEnabled(),
+    setLogLevel: performanceMonitor.setLogLevel.bind(performanceMonitor),
+    setLogThreshold: performanceMonitor.setLogThreshold.bind(performanceMonitor),
+    getLogConfig: performanceMonitor.getLogConfig.bind(performanceMonitor),
   };
 };
 
@@ -185,7 +213,7 @@ export const withPerformanceMonitoring = <P extends object>(
       };
     });
 
-    return React.createElement(Component, { ...props, ref });
+    return React.createElement(Component as any, { ...props, ref });
   });
 
   WrappedComponent.displayName = `withPerformanceMonitoring(${componentName || Component.displayName || Component.name})`;

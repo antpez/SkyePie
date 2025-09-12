@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { performanceMonitor } from '../utils/performanceMonitor';
 
 class DatabaseConnection {
   private static instance: DatabaseConnection;
@@ -12,13 +13,15 @@ class DatabaseConnection {
   }
 
   async initialize(): Promise<void> {
-    try {
-      this.db = await SQLite.openDatabaseAsync('skyepie.db');
-      await this.createTables();
-    } catch (error) {
-      console.error('Error initializing database:', error);
-      throw error;
-    }
+    return performanceMonitor.measureAsync('DatabaseConnection.initialize', async () => {
+      try {
+        this.db = await SQLite.openDatabaseAsync('skyepie.db');
+        await this.createTables();
+      } catch (error) {
+        console.error('Error initializing database:', error);
+        throw error;
+      }
+    });
   }
 
   getDatabase(): SQLite.SQLiteDatabase | null {

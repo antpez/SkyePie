@@ -3,7 +3,7 @@ import { Card, CardProps } from 'react-native-paper';
 import { StyleSheet, ViewStyle } from 'react-native';
 import { useThemeContext } from '../../contexts/ThemeContext';
 
-interface ConsistentCardProps extends CardProps {
+interface ConsistentCardProps extends Omit<CardProps, 'elevation'> {
   children: React.ReactNode;
   style?: ViewStyle;
   elevation?: number;
@@ -34,7 +34,7 @@ export const ConsistentCard: React.FC<ConsistentCardProps> = ({
         { backgroundColor: theme.colors.surface },
         style,
       ]}
-      elevation={elevation}
+      elevation={elevation as any}
       {...props}
     >
       {children}

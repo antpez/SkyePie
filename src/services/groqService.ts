@@ -171,10 +171,15 @@ export class GroqService {
         throw new Error('AI response is not an array');
       }
       
-      return recommendations.map((rec: any) => ({
+      return recommendations.map((rec: any, index: number) => ({
+        id: `clothing-${Date.now()}-${index}`,
         category: rec.category as ClothingRecommendation['category'],
         item: rec.item,
+        description: rec.description || rec.item,
         reason: rec.reason,
+        temperatureRange: { min: weather.main.temp - 5, max: weather.main.temp + 5 },
+        weatherConditions: [weather.weather[0]?.main || 'clear'],
+        confidence: 0.8,
         priority: rec.priority as ClothingRecommendation['priority']
       }));
     } catch (error) {
@@ -223,12 +228,18 @@ export class GroqService {
         throw new Error('AI response is not an array');
       }
       
-      return recommendations.map((rec: any) => ({
-        activity: rec.activity,
-        suitability: rec.suitability as ActivityRecommendation['suitability'],
-        reason: rec.reason,
-        duration: rec.duration,
-        location: rec.location as ActivityRecommendation['location'],
+      return recommendations.map((rec: any, index: number) => ({
+        id: `activity-${Date.now()}-${index}`,
+        name: rec.activity,
+        description: rec.reason,
+        category: 'outdoor' as ActivityRecommendation['category'],
+        weatherConditions: [weather.weather[0]?.main || 'clear'],
+        temperatureRange: { min: weather.main.temp - 5, max: weather.main.temp + 5 },
+        duration: typeof rec.duration === 'string' ? 60 : rec.duration, // Convert string to number
+        difficulty: 'medium' as ActivityRecommendation['difficulty'],
+        confidence: 0.8,
+        suitability: rec.suitability,
+        location: rec.location,
         equipment: rec.equipment || []
       }));
     } catch (error) {
@@ -287,6 +298,7 @@ export class GroqService {
         message: insight.message,
         priority: insight.priority as PersonalizedInsight['priority'],
         validUntil: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
+        confidence: 0.8,
         isActive: true
       }));
     } catch (error) {
@@ -307,25 +319,40 @@ export class GroqService {
     
     if (temp < 10) {
       recommendations.push({
+        id: 'fallback-coat',
         category: 'outerwear',
         item: 'Warm coat',
+        description: 'Heavy winter coat for cold weather',
         reason: 'Cold weather protection',
+        temperatureRange: { min: -10, max: 15 },
+        weatherConditions: ['clear', 'clouds'],
+        confidence: 0.9,
         priority: 'essential'
       });
     } else if (temp > 25) {
       recommendations.push({
+        id: 'fallback-tshirt',
         category: 'top',
         item: 'Light t-shirt',
+        description: 'Breathable cotton t-shirt',
         reason: 'Comfortable for warm weather',
+        temperatureRange: { min: 20, max: 40 },
+        weatherConditions: ['clear', 'clouds'],
+        confidence: 0.9,
         priority: 'essential'
       });
     }
     
     if (condition === 'Rain') {
       recommendations.push({
+        id: 'fallback-umbrella',
         category: 'accessories',
         item: 'Umbrella',
+        description: 'Waterproof umbrella',
         reason: 'Rain protection',
+        temperatureRange: { min: 0, max: 30 },
+        weatherConditions: ['rain', 'drizzle'],
+        confidence: 0.9,
         priority: 'essential'
       });
     }
@@ -341,19 +368,33 @@ export class GroqService {
     
     if (temp > 20 && condition === 'Clear') {
       recommendations.push({
-        activity: 'Outdoor walking',
+        id: 'fallback-walking',
+        name: 'Outdoor walking',
+        description: 'Perfect weather for outdoor activities',
+        category: 'outdoor',
+        weatherConditions: ['clear'],
+        temperatureRange: { min: 15, max: 35 },
+        duration: 45, // 45 minutes
+        difficulty: 'easy',
+        confidence: 0.9,
         suitability: 'excellent',
-        reason: 'Perfect weather for outdoor activities',
-        duration: '30-60 minutes',
-        location: 'outdoor'
+        location: 'outdoor',
+        equipment: []
       });
     } else if (condition === 'Rain') {
       recommendations.push({
-        activity: 'Indoor reading',
+        id: 'fallback-reading',
+        name: 'Indoor reading',
+        description: 'Great weather for indoor activities',
+        category: 'indoor',
+        weatherConditions: ['rain'],
+        temperatureRange: { min: 0, max: 30 },
+        duration: 90, // 90 minutes
+        difficulty: 'easy',
+        confidence: 0.9,
         suitability: 'excellent',
-        reason: 'Great weather for indoor activities',
-        duration: '1-2 hours',
-        location: 'indoor'
+        location: 'indoor',
+        equipment: []
       });
     }
     
@@ -369,6 +410,7 @@ export class GroqService {
         message: `Current temperature is ${weather.main.temp}°C with ${weather.weather[0].main} conditions.`,
         priority: 'low',
         validUntil: new Date(Date.now() + 6 * 60 * 60 * 1000),
+        confidence: 0.8,
         isActive: true
       }
     ];

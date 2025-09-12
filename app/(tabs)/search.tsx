@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Text, Snackbar } from 'react-native-paper';
 import { router } from 'expo-router';
 import { LocationSearch } from '../../src/components';
+import { UniversalHeader } from '../../src/components/common';
 import { useOfflineWeather } from '../../src/hooks/useOfflineWeather';
 import { useThemeContext } from '../../src/contexts/ThemeContext';
 import { LocationSearchResult, SearchHistoryItem, Location } from '../../src/types';
@@ -210,6 +211,13 @@ export default function SearchScreen() {
 
   return (
     <View style={containerStyle} key={`search-${effectiveTheme}`}>
+      {/* Universal Header */}
+      <UniversalHeader 
+        title="Search" 
+        backgroundColor={theme.colors.background}
+        textColor={theme.colors.onSurface}
+      />
+      
       <LocationSearch
         key={`location-search-${effectiveTheme}`}
         onLocationSelect={handleLocationSelect}
@@ -231,6 +239,7 @@ export default function SearchScreen() {
           setSuccessMessage(null);
         }}
         duration={4000}
+        style={{ backgroundColor: theme.colors.error }}
       >
         {snackbarMessage}
       </Snackbar>
@@ -241,5 +250,6 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 100, // Space for UniversalHeader
   },
 });

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { View, StyleSheet, Text, Image } from 'react-native';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { WeatherCondition } from '../../types';
+import { performanceMonitor } from '../../utils/performanceMonitor';
 
 // Direct image imports for weather icons
 const weatherIcons = {
@@ -57,41 +58,58 @@ interface WeatherIconProps {
   accessibilityLabel?: string;
 }
 
-export const WeatherIcon: React.FC<WeatherIconProps> = ({
+export const WeatherIcon: React.FC<WeatherIconProps> = React.memo(({
   condition,
   size = 64,
   color,
   accessibilityLabel,
 }) => {
+  // Simple performance monitoring for slow renders only
+  const renderStartTime = React.useRef<number | null>(null);
+  
+  React.useEffect(() => {
+    if (__DEV__) {
+      renderStartTime.current = performance.now();
+      return () => {
+        if (renderStartTime.current) {
+          const renderTime = performance.now() - renderStartTime.current;
+          if (renderTime > 50) { // Only log slow icon renders
+            console.log(`🐌 WeatherIcon_render: ${renderTime.toFixed(2)}ms`);
+          }
+        }
+      };
+    }
+  });
+
   const { effectiveTheme, theme } = useThemeContext();
   
-  // Get the weather icon image directly from our mapping
-  const getWeatherIconImage = (iconCode: string | undefined | null) => {
-    if (!iconCode) {
+  // Memoize weather icon image selection
+  const weatherIconImage = useMemo(() => {
+    if (!condition?.icon) {
       return weatherIcons['01d']; // Default to clear sky day
     }
-    return weatherIcons[iconCode as keyof typeof weatherIcons] || weatherIcons['01d'];
-  };
-
-  const weatherIconImage = getWeatherIconImage(condition?.icon);
+    return weatherIcons[condition.icon as keyof typeof weatherIcons] || weatherIcons['01d'];
+  }, [condition?.icon]);
 
   // Check if we have a valid image source (require() should return a number for local images)
-  const hasValidImage = weatherIconImage && (typeof weatherIconImage === 'number' || (typeof weatherIconImage === 'object' && weatherIconImage.uri));
+  const hasValidImage = useMemo(() => {
+    return weatherIconImage && (typeof weatherIconImage === 'number' || (typeof weatherIconImage === 'object' && weatherIconImage.uri));
+  }, [weatherIconImage]);
   
-  // Generate accessibility label
-  const getAccessibilityLabel = () => {
+  // Memoize accessibility label
+  const accessibilityLabelText = useMemo(() => {
     if (accessibilityLabel) return accessibilityLabel;
     return `${condition?.description || 'Weather'} icon`;
-  };
+  }, [accessibilityLabel, condition?.description]);
   
-  // If no valid image, use emoji fallback
-  if (!hasValidImage) {
+  // Memoize emoji fallback
+  const emojiFallback = useMemo(() => {
     const emoji = getWeatherEmoji(condition?.icon || '01d');
     return (
       <View 
         style={[styles.container, { width: size, height: size }]}
         accessible={true}
-        accessibilityLabel={getAccessibilityLabel()}
+        accessibilityLabel={accessibilityLabelText}
         accessibilityRole="image"
       >
         <Text style={[styles.emojiIcon, { fontSize: size * 0.8 }]}>
@@ -99,13 +117,18 @@ export const WeatherIcon: React.FC<WeatherIconProps> = ({
         </Text>
       </View>
     );
+  }, [condition?.icon, size, accessibilityLabelText]);
+
+  // If no valid image, use emoji fallback
+  if (!hasValidImage) {
+    return emojiFallback;
   }
 
   return (
     <View 
       style={[styles.container, { width: size, height: size }]}
       accessible={true}
-      accessibilityLabel={getAccessibilityLabel()}
+      accessibilityLabel={accessibilityLabelText}
       accessibilityRole="image"
     >
       <Image
@@ -126,7 +149,7 @@ export const WeatherIcon: React.FC<WeatherIconProps> = ({
       />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -153,3 +176,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+WeatherIcon.displayName = 'WeatherIcon';

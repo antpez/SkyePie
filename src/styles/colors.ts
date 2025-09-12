@@ -1,72 +1,101 @@
 export const colors = {
-  // Primary colors
-  primary: '#2196F3',
-  primaryDark: '#1976D2',
-  primaryLight: '#BBDEFB',
+  // Primary colors - Modern blue gradient
+  primary: '#667eea',
+  primaryDark: '#5a67d8',
+  primaryLight: '#a5b4fc',
+  primaryGradient: ['#667eea', '#764ba2'],
   
-  // Secondary colors
-  secondary: '#FF9800',
-  secondaryDark: '#F57C00',
-  secondaryLight: '#FFE0B2',
+  // Secondary colors - Modern orange gradient
+  secondary: '#f093fb',
+  secondaryDark: '#f5576c',
+  secondaryLight: '#f8b4d9',
+  secondaryGradient: ['#f093fb', '#f5576c'],
   
-  // Weather-specific colors
-  sunny: '#FFC107',
-  cloudy: '#9E9E9E',
-  rainy: '#2196F3',
-  snowy: '#E1F5FE',
-  stormy: '#424242',
+  // Weather-specific colors with gradients
+  sunny: '#ffecd2',
+  sunnyGradient: ['#fcb69f', '#ffecd2'],
+  cloudy: '#a8edea',
+  cloudyGradient: ['#a8edea', '#fed6e3'],
+  rainy: '#a8c8ec',
+  rainyGradient: ['#a8c8ec', '#d299c2'],
+  snowy: '#e0c3fc',
+  snowyGradient: ['#e0c3fc', '#9bb5ff'],
+  stormy: '#667eea',
+  stormyGradient: ['#667eea', '#764ba2'],
   
-  // Temperature colors
-  hot: '#F44336',
-  warm: '#FF9800',
-  mild: '#4CAF50',
-  cool: '#2196F3',
-  cold: '#9C27B0',
+  // Temperature colors with gradients
+  hot: '#ff9a9e',
+  hotGradient: ['#ff9a9e', '#fecfef'],
+  warm: '#ffecd2',
+  warmGradient: ['#fcb69f', '#ffecd2'],
+  mild: '#a8edea',
+  mildGradient: ['#a8edea', '#fed6e3'],
+  cool: '#a8c8ec',
+  coolGradient: ['#a8c8ec', '#d299c2'],
+  cold: '#e0c3fc',
+  coldGradient: ['#e0c3fc', '#9bb5ff'],
   
   // Status colors
-  success: '#4CAF50',
-  warning: '#FF9800',
-  error: '#F44336',
-  info: '#2196F3',
+  success: '#4ade80',
+  successGradient: ['#4ade80', '#22c55e'],
+  warning: '#fbbf24',
+  warningGradient: ['#fbbf24', '#f59e0b'],
+  error: '#f87171',
+  errorGradient: ['#f87171', '#ef4444'],
+  info: '#60a5fa',
+  infoGradient: ['#60a5fa', '#3b82f6'],
   
-  // Neutral colors
+  // Neutral colors - Modern grays
   white: '#FFFFFF',
-  black: '#000000',
-  gray50: '#FAFAFA',
-  gray100: '#F5F5F5',
-  gray200: '#EEEEEE',
-  gray300: '#E0E0E0',
-  gray400: '#BDBDBD',
-  gray500: '#9E9E9E',
-  gray600: '#757575',
-  gray700: '#616161',
-  gray800: '#424242',
-  gray900: '#212121',
+  black: '#0f172a',
+  gray50: '#f8fafc',
+  gray100: '#f1f5f9',
+  gray200: '#e2e8f0',
+  gray300: '#cbd5e1',
+  gray400: '#94a3b8',
+  gray500: '#64748b',
+  gray600: '#475569',
+  gray700: '#334155',
+  gray800: '#1e293b',
+  gray900: '#0f172a',
   
   // Background colors
-  background: '#FAFAFA',
+  background: '#f8fafc',
+  backgroundGradient: ['#f8fafc', '#e2e8f0'],
   surface: '#FFFFFF',
-  surfaceVariant: '#F5F5F5',
+  surfaceVariant: '#f1f5f9',
+  surfaceGradient: ['#ffffff', '#f8fafc'],
   
   // Text colors - Light theme
-  onBackground: '#000000',
-  onSurface: '#000000',
-  onSurfaceVariant: '#000000',
-  onPrimary: '#000000',
-  onSecondary: '#000000',
+  onBackground: '#0f172a',
+  onSurface: '#1e293b',
+  onSurfaceVariant: '#475569',
+  onPrimary: '#ffffff',
+  onSecondary: '#ffffff',
   
   // Text colors - Dark theme
-  onBackgroundDark: '#FFFFFF',
-  onSurfaceDark: '#FFFFFF',
-  onSurfaceVariantDark: '#FFFFFF',
+  onBackgroundDark: '#f8fafc',
+  onSurfaceDark: '#f1f5f9',
+  onSurfaceVariantDark: '#cbd5e1',
   
   // Border colors
-  outline: '#E0E0E0',
-  outlineVariant: '#F5F5F5',
+  outline: '#e2e8f0',
+  outlineVariant: '#f1f5f9',
   
   // Shadow colors
-  shadow: 'rgba(0, 0, 0, 0.1)',
-  shadowDark: 'rgba(0, 0, 0, 0.2)',
+  shadow: 'rgba(15, 23, 42, 0.08)',
+  shadowDark: 'rgba(15, 23, 42, 0.16)',
+  shadowLight: 'rgba(15, 23, 42, 0.04)',
+  
+  // Modern accent colors
+  accent: '#8b5cf6',
+  accentGradient: ['#8b5cf6', '#a855f7'],
+  accentLight: '#c4b5fd',
+  
+  // Glass morphism
+  glass: 'rgba(255, 255, 255, 0.25)',
+  glassDark: 'rgba(15, 23, 42, 0.25)',
+  glassBorder: 'rgba(255, 255, 255, 0.18)',
 } as const;
 
 export type ColorKey = keyof typeof colors;
