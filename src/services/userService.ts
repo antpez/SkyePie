@@ -1,6 +1,7 @@
 import { databaseConnection } from '../database';
 import { generateId } from '../utils/helpers';
 import { Platform } from 'react-native';
+import { storageService } from './storageService';
 
 // Wait for database to be ready
 const waitForDatabase = async (): Promise<void> => {
@@ -163,7 +164,6 @@ export class UserService {
   private async getDeviceId(): Promise<string> {
     try {
       // Use AsyncStorage to store a persistent device ID
-      const { storageService } = await import('./storageService');
       let deviceId = await storageService.getItem<string>('device_id');
       
       if (!deviceId) {

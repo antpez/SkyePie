@@ -20,11 +20,21 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/android/mipmap-mdpi/Skyepie.png",
         "backgroundColor": "#ffffff"
+      },
+      "splash": {
+        "image": "./assets/splash/android_splash_xxhdpi.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#87CEEB"
       }
     },
     "ios": {
       "bundleIdentifier": "com.antpez.skyepie",
-      "icon": "./assets/iOS/1024.png"
+      "icon": "./assets/iOS/1024.png",
+      "splash": {
+        "image": "./assets/splash/ios_splash_1024.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#87CEEB"
+      }
     }
   }
 }
