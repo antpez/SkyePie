@@ -12,6 +12,10 @@ import { networkErrorHandler } from '../utils/networkErrorHandler';
 import { retryHandler } from '../utils/retryHandler';
 import { performanceMonitor } from '../utils/performanceMonitor';
 
+/**
+ * WeatherService - Handles all weather-related API calls to OpenWeatherMap
+ * Provides caching, error handling, and retry logic for weather data
+ */
 export class WeatherService {
   private static instance: WeatherService;
   private api: AxiosInstance;
@@ -138,18 +142,16 @@ export class WeatherService {
     longitude: number,
     units: 'metric' | 'imperial' = 'metric'
   ): Promise<CurrentWeather> {
-    const startTime = performance.now();
-    
-    const params = { lat: latitude, lon: longitude, units };
-    const cacheKey = this.getCacheKey('/weather', params);
-    
-    // Check cache first
-    const cachedData = this.getCachedData<CurrentWeather>(cacheKey);
-    if (cachedData) {
-      return cachedData;
-    }
+    return performanceMonitor.measureAsync('WeatherService.getCurrentWeather', async () => {
+      const params = { lat: latitude, lon: longitude, units };
+      const cacheKey = this.getCacheKey('/weather', params);
+      
+      // Check cache first
+      const cachedData = this.getCachedData<CurrentWeather>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
 
-    try {
       const result = await retryHandler.executeWithRetry(
         async () => {
           const response: AxiosResponse<CurrentWeather> = await this.api.get('/weather', {
@@ -169,17 +171,7 @@ export class WeatherService {
       );
       
       return result;
-    } finally {
-      // Only log if it took longer than 100ms
-      const duration = performance.now() - startTime;
-      if (__DEV__ && duration > 100) {
-        console.log(`🐌 WeatherService.getCurrentWeather: ${duration.toFixed(2)}ms`, { 
-          latitude, 
-          longitude, 
-          units 
-        });
-      }
-    }
+    });
   }
 
   async getWeatherForecast(
@@ -212,18 +204,18 @@ export class WeatherService {
     }, { latitude, longitude, units });
   }
 
-  async searchLocations(query: string, limit: number = 5): Promise<LocationSearchResult[]> {
+  async searchLocations(query: string, limit: number = 8): Promise<LocationSearchResult[]> {
     try {
       const response = await axios.get(`${APP_CONFIG.api.openWeatherMap.geocodingUrl}/direct`, {
         params: {
           q: query,
-          limit,
+          limit: Math.min(limit, 20), // Cap at 20 for API efficiency
           appid: this.config.apiKey,
         },
         timeout: this.config.timeout,
       });
 
-      return response.data.map((item: any) => ({
+      const results = response.data.map((item: any) => ({
         name: item.name,
         country: item.country,
         state: item.state,
@@ -231,6 +223,24 @@ export class WeatherService {
         longitude: item.lon,
         displayName: `${item.name}${item.state ? `, ${item.state}` : ''}, ${item.country}`,
       }));
+
+      // Sort results by relevance (exact matches first, then by name length)
+      return results.sort((a: LocationSearchResult, b: LocationSearchResult) => {
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+        const queryLower = query.toLowerCase();
+        
+        // Exact match gets highest priority
+        if (aName === queryLower && bName !== queryLower) return -1;
+        if (bName === queryLower && aName !== queryLower) return 1;
+        
+        // Starts with query gets second priority
+        if (aName.startsWith(queryLower) && !bName.startsWith(queryLower)) return -1;
+        if (bName.startsWith(queryLower) && !aName.startsWith(queryLower)) return 1;
+        
+        // Shorter names get priority (more likely to be the main city)
+        return aName.length - bName.length;
+      }).slice(0, limit);
     } catch (error) {
       console.error('Error searching locations:', error);
       throw this.handleApiError({

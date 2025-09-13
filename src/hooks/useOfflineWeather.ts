@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { CurrentWeather, WeatherForecast, LocationSearchResult, TemperatureUnit, Location, WeatherAlert } from '../types';
+import { CurrentWeather, WeatherForecast, TemperatureUnit, Location, WeatherAlert } from '../types';
 import { createWeatherService } from '../services';
 import { offlineCacheService, userService } from '../services';
 import { APP_CONFIG } from '../config/app';
@@ -7,6 +7,12 @@ import { useNetworkStatus } from './useNetworkStatus';
 import { NetworkError } from '../types/networkErrors';
 import { performanceMonitor } from '../utils/performanceMonitor';
 
+/**
+ * useOfflineWeather - Custom hook for weather data with offline support
+ * Provides weather data fetching, caching, and offline functionality
+ * @param apiKey - OpenWeatherMap API key
+ * @returns Weather data, loading states, and fetch functions
+ */
 export const useOfflineWeather = (apiKey?: string) => {
   const [currentWeather, setCurrentWeather] = useState<CurrentWeather | null>(null);
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
@@ -34,19 +40,35 @@ export const useOfflineWeather = (apiKey?: string) => {
     return null;
   }, [apiKey]);
 
+  // Ref to store user ID and prevent re-initialization
+  const userIdRef = useRef<string | null>(null);
+  const initializingUser = useRef(false);
+
   // Helper function to ensure user is initialized and get current user ID
   const ensureUserInitialized = useCallback(async (): Promise<string> => {
-    if (userId) return userId;
+    if (userIdRef.current) return userIdRef.current;
     
+    // Prevent multiple simultaneous calls
+    if (initializingUser.current) {
+      // Wait a bit and try again
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (userIdRef.current) return userIdRef.current;
+    }
+    
+    initializingUser.current = true;
     try {
       const user = await userService.getCurrentUser();
+      userIdRef.current = user.id;
+      // Always set state to ensure consistency
       setUserId(user.id);
       return user.id;
     } catch (error) {
       console.error('Error initializing user:', error);
       throw new Error('User initialization failed');
+    } finally {
+      initializingUser.current = false;
     }
-  }, [userId]);
+  }, []);
 
   // Helper function to create location object
   const createLocationObject = useCallback((userId: string, latitude: number, longitude: number): Omit<Location, 'id' | 'createdAt' | 'updatedAt'> => ({
@@ -64,6 +86,7 @@ export const useOfflineWeather = (apiKey?: string) => {
   // Initialize user - optimized with better error handling
   useEffect(() => {
     let isMounted = true;
+    let retryTimeout: NodeJS.Timeout | null = null;
     
     const initUser = async () => {
       try {
@@ -78,7 +101,7 @@ export const useOfflineWeather = (apiKey?: string) => {
       } catch (error) {
         console.error('Error initializing user:', error);
         // Retry after a longer delay
-        setTimeout(async () => {
+        retryTimeout = setTimeout(async () => {
           if (!isMounted) return;
           try {
             const user = await userService.getCurrentUser();
@@ -96,6 +119,9 @@ export const useOfflineWeather = (apiKey?: string) => {
     
     return () => {
       isMounted = false;
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
     };
   }, []);
 
@@ -192,19 +218,9 @@ export const useOfflineWeather = (apiKey?: string) => {
     } finally {
       setIsLoading(false);
       
-      // Only log if it took longer than 100ms
-      const duration = performance.now() - startTime;
-      if (__DEV__ && duration > 100) {
-        console.log(`🐌 fetchCurrentWeather: ${duration.toFixed(2)}ms`, { 
-          latitude, 
-          longitude, 
-          units, 
-          forceRefresh,
-          isOnline 
-        });
-      }
+      // Performance monitoring - removed to reduce log spam
     }
-  }, [weatherService, ensureUserInitialized, createLocationObject, isOnline]);
+  }, [weatherService, createLocationObject]);
 
   const fetchForecast = useCallback(async (
     latitude: number, 
@@ -277,7 +293,7 @@ export const useOfflineWeather = (apiKey?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [weatherService, ensureUserInitialized, createLocationObject]);
+  }, [weatherService, createLocationObject]);
 
   const searchLocations = useCallback(async (query: string) => {
     if (!weatherService) {
@@ -319,7 +335,7 @@ export const useOfflineWeather = (apiKey?: string) => {
       setError(errorMessage);
       throw err;
     }
-  }, [weatherService, ensureUserInitialized]);
+  }, [weatherService]);
 
   const reverseGeocode = useCallback(async (latitude: number, longitude: number) => {
     if (!weatherService) {
@@ -366,13 +382,14 @@ export const useOfflineWeather = (apiKey?: string) => {
       const results = await Promise.allSettled([
         fetchCurrentWeather(latitude, longitude, units, true),
         fetchForecast(latitude, longitude, units, true),
-        fetchAlerts(latitude, longitude),
+        // Temporarily disable alerts to prevent infinite loop
+        // fetchAlerts(latitude, longitude),
       ]);
       
       // Log any failures but don't throw
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
-          const operation = ['current weather', 'forecast', 'alerts'][index];
+          const operation = ['current weather', 'forecast'][index];
           console.warn(`Failed to refresh ${operation}:`, result.reason);
         }
       });
@@ -380,7 +397,7 @@ export const useOfflineWeather = (apiKey?: string) => {
       console.error('Error refreshing weather:', err);
       throw err;
     }
-  }, [fetchCurrentWeather, fetchForecast, fetchAlerts]);
+  }, []);
 
   const loadCachedWeather = useCallback(async (latitude: number, longitude: number) => {
     try {
@@ -400,7 +417,7 @@ export const useOfflineWeather = (apiKey?: string) => {
       console.error('Error loading cached weather:', err);
     }
     return null;
-  }, [ensureUserInitialized, createLocationObject]);
+  }, [createLocationObject]);
 
   const loadCachedForecast = useCallback(async (latitude: number, longitude: number) => {
     try {
@@ -420,7 +437,7 @@ export const useOfflineWeather = (apiKey?: string) => {
       console.error('Error loading cached forecast:', err);
     }
     return null;
-  }, [ensureUserInitialized, createLocationObject]);
+  }, [createLocationObject]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -460,7 +477,7 @@ export const useOfflineWeather = (apiKey?: string) => {
       console.warn('Error in fast initialization:', error);
       return false;
     }
-  }, [ensureUserInitialized, createLocationObject]);
+  }, [createLocationObject]);
 
   const clearCache = useCallback(async () => {
     if (!userId) return;
@@ -489,7 +506,7 @@ export const useOfflineWeather = (apiKey?: string) => {
       // Clear expired cache on app start
       clearCache();
     }
-  }, [userId, clearCache]);
+  }, [userId]); // clearCache is stable, no need for dependency
 
   return {
     currentWeather,

@@ -148,9 +148,9 @@ export class GroqService {
     Return your response as a JSON array of clothing recommendations with this exact structure:
     [{"category": "top|bottom|outerwear|accessories|footwear", "item": "specific item name", "reason": "why this item is recommended", "priority": "essential|recommended|optional"}]`;
 
-    const prompt = `Weather: ${weather.main.temp}°C, ${weather.weather[0].main}, humidity ${weather.main.humidity}%, wind ${weather.wind.speed} m/s
+    const prompt = `Weather: ${weather.main.temp}°C, ${weather.weather[0]?.main || 'clear'}, humidity ${weather.main.humidity}%, wind ${weather.wind.speed} m/s
     User preferences: ${userPrefs.clothingStyle} style, ${userPrefs.weatherSensitivity} sensitivity
-    Forecast: ${forecast.list.slice(0, 3).map(item => `${item.main.temp}°C ${item.weather[0].main}`).join(', ')}
+    Forecast: ${forecast.list.slice(0, 3).map(item => `${item.main.temp}°C ${item.weather[0]?.main || 'clear'}`).join(', ')}
     
     Provide 5-8 specific clothing recommendations for this weather.`;
 
@@ -206,7 +206,7 @@ export class GroqService {
     Return your response as a JSON array of activity recommendations with this exact structure:
     [{"activity": "activity name", "suitability": "excellent|good|fair|poor", "reason": "why this activity is suitable", "duration": "suggested duration", "location": "indoor|outdoor|both", "equipment": ["item1", "item2"]}]`;
 
-    const prompt = `Weather: ${weather.main.temp}°C, ${weather.weather[0].main}, humidity ${weather.main.humidity}%, wind ${weather.wind.speed} m/s
+    const prompt = `Weather: ${weather.main.temp}°C, ${weather.weather[0]?.main || 'clear'}, humidity ${weather.main.humidity}%, wind ${weather.wind.speed} m/s
     User preferences: ${userPrefs.activityLevel} activity level, interests: ${userPrefs.preferredActivities.join(', ')}
     
     Suggest 6-10 activities suitable for this weather.`;
@@ -267,7 +267,7 @@ export class GroqService {
     Return your response as a JSON array of insights with this exact structure:
     [{"type": "clothing|activity|pattern|mood|health|general", "title": "insight title", "message": "detailed message", "priority": "low|medium|high"}]`;
 
-    const prompt = `Weather: ${weather.main.temp}°C, ${weather.weather[0].main}, humidity ${weather.main.humidity}%, wind ${weather.wind.speed} m/s
+    const prompt = `Weather: ${weather.main.temp}°C, ${weather.weather[0]?.main || 'clear'}, humidity ${weather.main.humidity}%, wind ${weather.wind.speed} m/s
     User profile: ${userPrefs.clothingStyle} style, ${userPrefs.activityLevel} activity level, ${userPrefs.weatherSensitivity} weather sensitivity
     Health conditions: ${userPrefs.healthConditions.join(', ') || 'none'}
     Allergies: ${userPrefs.allergies.join(', ') || 'none'}
@@ -313,7 +313,7 @@ export class GroqService {
   // Fallback methods
   private getFallbackClothingRecommendations(weather: CurrentWeather): ClothingRecommendation[] {
     const temp = weather.main.temp;
-    const condition = weather.weather[0].main;
+    const condition = weather.weather[0]?.main || 'clear';
     
     const recommendations: ClothingRecommendation[] = [];
     
@@ -362,7 +362,7 @@ export class GroqService {
 
   private getFallbackActivityRecommendations(weather: CurrentWeather): ActivityRecommendation[] {
     const temp = weather.main.temp;
-    const condition = weather.weather[0].main;
+    const condition = weather.weather[0]?.main || 'clear';
     
     const recommendations: ActivityRecommendation[] = [];
     
@@ -407,7 +407,7 @@ export class GroqService {
         id: `fallback_insight_${Date.now()}`,
         type: 'general',
         title: 'Weather Update',
-        message: `Current temperature is ${weather.main.temp}°C with ${weather.weather[0].main} conditions.`,
+        message: `Current temperature is ${weather.main.temp}°C with ${weather.weather[0]?.main || 'clear'} conditions.`,
         priority: 'low',
         validUntil: new Date(Date.now() + 6 * 60 * 60 * 1000),
         confidence: 0.8,

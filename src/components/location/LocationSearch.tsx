@@ -1,5 +1,5 @@
 import React, { useState, useCallback, memo } from 'react';
-import { View, StyleSheet, FlatList, ScrollView } from 'react-native';
+import { View, StyleSheet, FlatList, ScrollView, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Searchbar, Text, List, IconButton } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { LocationSearchResult, SearchHistoryItem } from '../../types';
@@ -36,7 +36,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
 
   const debouncedSearch = useCallback(
     debounce(async (searchQuery: string) => {
-      if (searchQuery.length < 2) {
+      if (searchQuery.length < 1) {
         setResults([]);
         setShowHistory(true);
         return;
@@ -53,7 +53,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
       } finally {
         setIsSearching(false);
       }
-    }, 300),
+    }, 200), // Reduced debounce delay for faster search
     [onSearch]
   );
 
@@ -61,6 +61,10 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
     setQuery(text);
     debouncedSearch(text);
   };
+
+  const handleScroll = useCallback(() => {
+    Keyboard.dismiss();
+  }, []);
 
   const handleLocationSelect = (location: LocationSearchResult) => {
     onLocationSelect(location);
@@ -99,27 +103,39 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
     const isItemFavorite = isFavorite(item);
     
     return (
-      <List.Item
-        title={item.name}
-        description={`${item.state ? `${item.state}, ` : ''}${item.country}`}
-        left={(props) => <List.Icon {...props} icon="map-marker" />}
-        right={(props) => (
-          <View style={styles.resultActions}>
-            {(onAddToFavorites || onRemoveFromFavorites) && (
-              <IconButton
-                icon={isItemFavorite ? "heart" : "heart-outline"}
-                iconColor={isItemFavorite ? theme.colors.error : theme.colors.primary}
-                size={20}
-                onPress={() => handleFavoriteToggle(item)}
-                accessibilityLabel={isItemFavorite ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
-              />
+      <TouchableWithoutFeedback
+        onPress={() => {
+          // Immediately select location and dismiss keyboard
+          handleLocationSelect(item);
+          Keyboard.dismiss();
+        }}
+      >
+        <View>
+          <List.Item
+            title={item.name}
+            description={`${item.state ? `${item.state}, ` : ''}${item.country}`}
+            left={(props) => <List.Icon {...props} icon="map-marker" />}
+            right={(props) => (
+              <View style={styles.resultActions}>
+                {(onAddToFavorites || onRemoveFromFavorites) && (
+                  <IconButton
+                    icon={isItemFavorite ? "heart" : "heart-outline"}
+                    iconColor={isItemFavorite ? theme.colors.error : theme.colors.primary}
+                    size={20}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleFavoriteToggle(item);
+                    }}
+                    accessibilityLabel={isItemFavorite ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
+                  />
+                )}
+              </View>
             )}
-          </View>
-        )}
-        onPress={() => handleLocationSelect(item)}
-        style={styles.resultItemContent}
-        accessibilityLabel={`Select ${item.name}, ${item.state ? `${item.state}, ` : ''}${item.country}`}
-      />
+            style={styles.resultItemContent}
+            accessibilityLabel={`Select ${item.name}, ${item.state ? `${item.state}, ` : ''}${item.country}`}
+          />
+        </View>
+      </TouchableWithoutFeedback>
     );
   };
 
@@ -133,7 +149,12 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
   );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.scrollContent}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
+    >
       <Searchbar
         placeholder={placeholder}
         value={query}
@@ -200,7 +221,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
             </>
           )}
           
-          {!isSearching && query.length >= 2 && results.length === 0 && (
+          {!isSearching && query.length >= 1 && results.length === 0 && (
             <View style={styles.noResultsContainer}>
               <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
                 No locations found for "{query}"

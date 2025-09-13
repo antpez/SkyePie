@@ -1,8 +1,9 @@
-import React, { useMemo, memo, useCallback } from 'react';
+import React, { useMemo, memo } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { useUnits } from '../../contexts/UnitsContext';
+import { useDisplayPreferences } from '../../contexts/DisplayPreferencesContext';
 import { useAccessibilityContext } from '../../contexts/AccessibilityContext';
 import { CurrentWeather } from '../../types';
 import { WeatherIcon } from './WeatherIcon';
@@ -29,6 +30,7 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
 
   const { effectiveTheme, theme } = useThemeContext();
   const { units } = useUnits();
+  const { preferences: displayPreferences } = useDisplayPreferences();
   const { 
     generateWeatherAccessibilityLabel, 
     getFontSize, 
@@ -127,15 +129,17 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
               unit={units.temperature}
               size="xlarge"
             />
-            <Text 
-              variant="titleMedium" 
-              style={[
-                styles.feelsLike,
-                { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
-              ]}
-            >
-              Feels like {formattedValues.feelsLike}
-            </Text>
+            {displayPreferences.showFeelsLike && (
+              <Text 
+                variant="titleMedium" 
+                style={[
+                  styles.feelsLike,
+                  { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
+                ]}
+              >
+                Feels like {formattedValues.feelsLike}
+              </Text>
+            )}
           </View>
         </View>
       </View>
@@ -149,80 +153,86 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
           accessibilityLabel="Weather details"
         >
           <View style={styles.detailsGrid}>
-              <View 
-                style={styles.detailItem}
-                accessible={true}
-                accessibilityLabel={`Humidity ${formattedValues.humidity}`}
-              >
-                <Text 
-                  variant="labelMedium" 
-                  style={[
-                    styles.detailLabel,
-                    { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
-                  ]}
+              {displayPreferences.showHumidity && (
+                <View 
+                  style={styles.detailItem}
+                  accessible={true}
+                  accessibilityLabel={`Humidity ${formattedValues.humidity}`}
                 >
-                  Humidity
-                </Text>
-                <Text 
-                  variant="titleMedium" 
-                  style={[
-                    styles.detailValue,
-                    { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
-                  ]}
-                >
-                  {formattedValues.humidity}
-                </Text>
-              </View>
+                  <Text 
+                    variant="labelMedium" 
+                    style={[
+                      styles.detailLabel,
+                      { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
+                    ]}
+                  >
+                    Humidity
+                  </Text>
+                  <Text 
+                    variant="titleMedium" 
+                    style={[
+                      styles.detailValue,
+                      { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
+                    ]}
+                  >
+                    {formattedValues.humidity}
+                  </Text>
+                </View>
+              )}
               
-              <View 
-                style={styles.detailItem}
-                accessible={true}
-                accessibilityLabel={`Wind ${formattedValues.windSpeed}`}
-              >
-                <Text 
-                  variant="labelMedium" 
-                  style={[
-                    styles.detailLabel,
-                    { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
-                  ]}
+              {displayPreferences.showWindSpeed && (
+                <View 
+                  style={styles.detailItem}
+                  accessible={true}
+                  accessibilityLabel={`Wind ${formattedValues.windSpeed}`}
                 >
-                  Wind
-                </Text>
-                <Text 
-                  variant="titleMedium" 
-                  style={[
-                    styles.detailValue,
-                    { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
-                  ]}
-                >
-                  {formattedValues.windSpeed}
-                </Text>
-              </View>
+                  <Text 
+                    variant="labelMedium" 
+                    style={[
+                      styles.detailLabel,
+                      { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
+                    ]}
+                  >
+                    Wind
+                  </Text>
+                  <Text 
+                    variant="titleMedium" 
+                    style={[
+                      styles.detailValue,
+                      { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
+                    ]}
+                  >
+                    {formattedValues.windSpeed}
+                  </Text>
+                </View>
+              )}
               
-              <View 
-                style={styles.detailItem}
-                accessible={true}
-                accessibilityLabel={`Pressure ${formattedValues.pressure}`}
-              >
-                <Text 
-                  variant="labelMedium" 
-                  style={[
-                    styles.detailLabel,
-                    { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
-                  ]}
+              {displayPreferences.showPressure && (
+                <View 
+                  style={styles.detailItem}
+                  accessible={true}
+                  accessibilityLabel={`Pressure ${formattedValues.pressure}`}
                 >
-                  Pressure
-                </Text>
-                <Text 
-                  variant="titleMedium" 
-                  style={[
-                    styles.detailValue,
-                    { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
-                  ]}
-                >
-                  {formattedValues.pressure}
-                </Text>
-              </View>
+                  <Text 
+                    variant="labelMedium" 
+                    style={[
+                      styles.detailLabel,
+                      { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
+                    ]}
+                  >
+                    Pressure
+                  </Text>
+                  <Text 
+                    variant="titleMedium" 
+                    style={[
+                      styles.detailValue,
+                      { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
+                    ]}
+                  >
+                    {formattedValues.pressure}
+                  </Text>
+                </View>
+              )}
               
               <View 
                 style={styles.detailItem}

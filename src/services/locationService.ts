@@ -33,10 +33,19 @@ export class LocationService {
 
   async getCurrentLocation(): Promise<LocationCoordinates> {
     try {
-      const { status } = await Location.getForegroundPermissionsAsync();
+      // First check if we already have permission
+      let { status } = await Location.getForegroundPermissionsAsync();
       
+      // If permission is not granted, try to request it
       if (status !== 'granted') {
-        throw new Error('Location permission not granted');
+        console.log('Location permission not granted, requesting permission...');
+        const permissionResult = await this.requestLocationPermission();
+        
+        if (!permissionResult.granted) {
+          throw new Error('Location permission denied by user');
+        }
+        
+        // Permission is now granted, we can proceed
       }
 
       const location = await Location.getCurrentPositionAsync({
@@ -67,10 +76,19 @@ export class LocationService {
     errorCallback?: (error: LocationError) => void
   ): Promise<Location.LocationSubscription> {
     try {
-      const { status } = await Location.getForegroundPermissionsAsync();
+      // First check if we already have permission
+      let { status } = await Location.getForegroundPermissionsAsync();
       
+      // If permission is not granted, try to request it
       if (status !== 'granted') {
-        throw new Error('Location permission not granted');
+        console.log('Location permission not granted for watching, requesting permission...');
+        const permissionResult = await this.requestLocationPermission();
+        
+        if (!permissionResult.granted) {
+          throw new Error('Location permission denied by user');
+        }
+        
+        // Permission is now granted, we can proceed
       }
 
       return await Location.watchPositionAsync(

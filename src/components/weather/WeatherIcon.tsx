@@ -74,7 +74,8 @@ export const WeatherIcon: React.FC<WeatherIconProps> = React.memo(({
         if (renderStartTime.current) {
           const renderTime = performance.now() - renderStartTime.current;
           if (renderTime > 50) { // Only log slow icon renders
-            console.log(`🐌 WeatherIcon_render: ${renderTime.toFixed(2)}ms`);
+            performanceMonitor.startTiming('WeatherIcon_render');
+            performanceMonitor.endTiming('WeatherIcon_render');
           }
         }
       };

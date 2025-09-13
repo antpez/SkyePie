@@ -30,7 +30,12 @@ export default {
       },
       runtimeVersion: {
         policy: "appVersion"
-      }
+      },
+      permissions: [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
     },
     ios: {
       bundleIdentifier: "com.antpez.skyepie",
@@ -40,7 +45,12 @@ export default {
         resizeMode: "contain",
         backgroundColor: "#87CEEB"
       },
-      runtimeVersion: "1.0.0"
+      runtimeVersion: "1.0.0",
+      infoPlist: {
+        NSLocationWhenInUseUsageDescription: "This app needs access to location to provide weather information for your current area.",
+        NSLocationAlwaysAndWhenInUseUsageDescription: "This app needs access to location to provide weather information for your current area.",
+        NSLocationAlwaysUsageDescription: "This app needs access to location to provide weather information for your current area."
+      }
     },
     updates: {
       url: "https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa"

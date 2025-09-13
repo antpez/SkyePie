@@ -8,6 +8,7 @@ import { ErrorBoundary } from '../src/components';
 import { ThemeProvider, useThemeContext } from '../src/contexts/ThemeContext';
 import { DatabaseProvider } from '../src/contexts/DatabaseContext';
 import { UnitsProvider } from '../src/contexts/UnitsContext';
+import { DisplayPreferencesProvider } from '../src/contexts/DisplayPreferencesContext';
 import { AccessibilityProvider } from '../src/contexts/AccessibilityContext';
 import { WeatherMapsProvider } from '../src/contexts/WeatherMapsContext';
 import { store } from '../src/store';
@@ -51,28 +52,30 @@ function AppContent() {
     <PaperProvider theme={theme} key={effectiveTheme}>
       <AccessibilityProvider>
         <UnitsProvider>
-          <WeatherMapsProvider>
-            <ErrorBoundary>
-              <StatusBar style={effectiveTheme === 'dark' ? 'light' : 'dark'} />
-              <Stack>
-          <Stack.Screen 
-            name="(tabs)" 
-            options={{ headerShown: false }} 
-          />
-          <Stack.Screen 
-            name="permissions" 
-            options={{ 
-              title: 'Location Permission',
-              presentation: 'modal' 
-            }} 
-          />
-          <Stack.Screen 
-            name="+not-found" 
-            options={{ title: 'Not Found' }} 
-          />
-        </Stack>
-            </ErrorBoundary>
-          </WeatherMapsProvider>
+          <DisplayPreferencesProvider>
+            <WeatherMapsProvider>
+              <ErrorBoundary>
+                <StatusBar style={effectiveTheme === 'dark' ? 'light' : 'dark'} />
+                <Stack>
+            <Stack.Screen 
+              name="(tabs)" 
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen 
+              name="permissions" 
+              options={{ 
+                title: 'Location Permission',
+                presentation: 'modal' 
+              }} 
+            />
+            <Stack.Screen 
+              name="+not-found" 
+              options={{ title: 'Not Found' }} 
+            />
+          </Stack>
+              </ErrorBoundary>
+            </WeatherMapsProvider>
+          </DisplayPreferencesProvider>
         </UnitsProvider>
       </AccessibilityProvider>
     </PaperProvider>

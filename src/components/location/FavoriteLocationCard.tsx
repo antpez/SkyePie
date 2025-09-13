@@ -6,6 +6,7 @@ import { useThemeContext } from '../../contexts/ThemeContext';
 import { useUnits } from '../../contexts/UnitsContext';
 import { Location } from '../../types';
 import { WeatherIcon } from '../weather/WeatherIcon';
+import { TemperatureDisplay } from '../weather/TemperatureDisplay';
 import { formatTemperature } from '../../utils/formatters';
 import { WeatherService } from '../../services';
 import { APP_CONFIG } from '../../config/app';
@@ -24,6 +25,9 @@ interface WeatherPreview {
   icon: string;
   isLoading: boolean;
   error?: string;
+  sunrise?: number;
+  sunset?: number;
+  timezone?: number;
 }
 
 export const FavoriteLocationCard: React.FC<FavoriteLocationCardProps> = memo(({
@@ -39,7 +43,10 @@ export const FavoriteLocationCard: React.FC<FavoriteLocationCardProps> = memo(({
     condition: '',
     description: '',
     icon: '',
-    isLoading: true
+    isLoading: true,
+    sunrise: undefined,
+    sunset: undefined,
+    timezone: undefined
   });
 
   // Memoized theme styles
@@ -68,7 +75,10 @@ export const FavoriteLocationCard: React.FC<FavoriteLocationCardProps> = memo(({
         condition: weather.weather[0]?.main || '',
         description: weather.weather[0]?.description || '',
         icon: weather.weather[0]?.icon || '',
-        isLoading: false
+        isLoading: false,
+        sunrise: weather.sys?.sunrise,
+        sunset: weather.sys?.sunset,
+        timezone: weather.timezone
       });
     } catch (error) {
       console.error('Error loading weather preview for', location.name, error);
@@ -166,9 +176,14 @@ export const FavoriteLocationCard: React.FC<FavoriteLocationCardProps> = memo(({
                     size={32}
                   />
                   <View style={styles.temperatureContainer}>
-                    <Text variant="headlineSmall" style={themeStyles.temperature}>
-                      {formatTemperature(weatherPreview.temperature, units.temperature)}
-                    </Text>
+                    <TemperatureDisplay
+                      temperature={weatherPreview.temperature}
+                      unit={units.temperature}
+                      size="small"
+                      sunrise={weatherPreview.sunrise}
+                      sunset={weatherPreview.sunset}
+                      timezone={weatherPreview.timezone}
+                    />
                     <Text variant="bodySmall" style={themeStyles.condition} numberOfLines={1}>
                       {weatherPreview.description}
                     </Text>

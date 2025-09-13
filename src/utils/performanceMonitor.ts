@@ -20,8 +20,8 @@ class PerformanceMonitor {
   private metrics: Map<string, PerformanceMetric> = new Map();
   private stats: Map<string, PerformanceStats> = new Map();
   private isEnabled: boolean = __DEV__; // Only enable in development
-  private logThreshold: number = 100; // Only log operations taking more than 100ms
-  private logLevel: 'none' | 'slow' | 'all' = 'slow'; // Log level: none, slow, or all
+  private logThreshold: number = 500; // Only log operations taking more than 500ms
+  private logLevel: 'none' | 'slow' | 'all' = 'none'; // Log level: none, slow, or all
 
   startTiming(name: string, metadata?: Record<string, any>): void {
     if (!this.isEnabled) return;
@@ -39,7 +39,7 @@ class PerformanceMonitor {
 
     const metric = this.metrics.get(name);
     if (!metric) {
-      console.warn(`Performance metric "${name}" not found`);
+      // Don't warn for missing metrics - this can happen with concurrent calls
       return null;
     }
 

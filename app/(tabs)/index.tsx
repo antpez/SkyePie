@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { Text, FAB, Snackbar, Button, SegmentedButtons } from 'react-native-paper';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts, WeatherIcon, TemperatureDisplay } from '@/components';
 import { NetworkErrorDisplay, ConsistentCard, WeatherSkeleton, UniversalHeader } from '@/components/common';
 import { FavoriteLocationCard } from '@/components/location';
@@ -9,6 +9,7 @@ import { useLocation } from '@/hooks';
 import { useOfflineWeather } from '@/hooks/useOfflineWeather';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { useUnits } from '@/contexts/UnitsContext';
+import { useDisplayPreferences } from '@/contexts/DisplayPreferencesContext';
 import { useDatabase } from '@/contexts/DatabaseContext';
 import { LocationCoordinates, Location } from '@/types';
 import { APP_CONFIG } from '@/config/app';
@@ -28,7 +29,6 @@ const WeatherScreen = memo(() => {
         if (renderStartTime.current) {
           const renderTime = performance.now() - renderStartTime.current;
           if (renderTime > 100) { // Only log slow renders
-            console.log(`🐌 WeatherScreen_render: ${renderTime.toFixed(2)}ms`);
           }
         }
       };
@@ -37,6 +37,7 @@ const WeatherScreen = memo(() => {
 
   const { effectiveTheme, theme } = useThemeContext();
   const { units } = useUnits();
+  const { preferences: displayPreferences } = useDisplayPreferences();
   const { isInitialized: dbInitialized, isInitializing: dbInitializing, error: dbError } = useDatabase();
   const { currentLocation, permissionStatus, getCurrentLocation } = useLocation();
   const searchParams = useLocalSearchParams();
@@ -73,17 +74,18 @@ const WeatherScreen = memo(() => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [hasCachedData, setHasCachedData] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<LocationCoordinates | null>(null);
-  const [showHourlyForecast, setShowHourlyForecast] = useState(false);
+  const [showHourlyForecast, setShowHourlyForecast] = useState(true);
   const [favoriteLocations, setFavoriteLocations] = useState<Location[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [favoriteWeatherData, setFavoriteWeatherData] = useState<Record<string, any>>({});
   const processedSearchParams = useRef<string>('');
   const fetchCurrentWeatherRef = useRef(fetchCurrentWeather);
+  const lastFavoritesLoadTime = useRef<number>(0);
 
   // Update ref when fetchCurrentWeather changes
   useEffect(() => {
     fetchCurrentWeatherRef.current = fetchCurrentWeather;
-  }, [fetchCurrentWeather]);
+  }, []); // Remove dependency to prevent infinite loop
 
   // Memoized values for performance - optimized dependencies
   const locationToUse = useMemo(() => selectedLocation || currentLocation, [selectedLocation, currentLocation]);
@@ -120,27 +122,42 @@ const WeatherScreen = memo(() => {
   const processedForecast = useMemo(() => {
     if (!forecast) return null;
     
+    // Get today's date for filtering
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Process all forecast data and group by day
+    const dailyData = forecast.list.reduce((acc, item) => {
+      const date = new Date(item.dt * 1000);
+      const dayKey = date.toDateString();
+      
+      if (!acc[dayKey]) {
+        acc[dayKey] = {
+          ...item,
+          dailyHigh: item.main.temp_max,
+          dailyLow: item.main.temp_min,
+          weatherIcon: item.weather[0],
+          dayName: formatDayOfWeek(item.dt),
+          originalDate: date,
+        };
+      } else {
+        acc[dayKey].dailyHigh = Math.max(acc[dayKey].dailyHigh, item.main.temp_max);
+        acc[dayKey].dailyLow = Math.min(acc[dayKey].dailyLow, item.main.temp_min);
+      }
+      return acc;
+    }, {} as Record<string, any>);
+    
+    // Get all days and filter out today, then take up to 6 days
+    const allDays = Object.values(dailyData).sort((a, b) => a.originalDate.getTime() - b.originalDate.getTime());
+    const futureDays = allDays.filter(day => {
+      const dayDate = new Date(day.originalDate);
+      dayDate.setHours(0, 0, 0, 0);
+      return dayDate > today;
+    });
+    
     return {
       hourly: forecast.list.slice(0, 4),
-      daily: forecast.list.reduce((acc, item) => {
-        const date = new Date(item.dt * 1000);
-        const dayKey = date.toDateString();
-        
-        if (!acc[dayKey]) {
-          acc[dayKey] = {
-            ...item,
-            dailyHigh: item.main.temp_max,
-            dailyLow: item.main.temp_min,
-            weatherIcon: item.weather[0],
-            dayName: formatDayOfWeek(item.dt),
-            originalDate: date,
-          };
-        } else {
-          acc[dayKey].dailyHigh = Math.max(acc[dayKey].dailyHigh, item.main.temp_max);
-          acc[dayKey].dailyLow = Math.min(acc[dayKey].dailyLow, item.main.temp_min);
-        }
-        return acc;
-      }, {} as Record<string, any>)
+      daily: futureDays.slice(0, 6) // Take up to 6 days starting from tomorrow
     };
   }, [forecast]);
 
@@ -168,13 +185,14 @@ const WeatherScreen = memo(() => {
       const results = await Promise.allSettled([
         fetchCurrentWeather(location.latitude, location.longitude),
         fetchForecast(location.latitude, location.longitude),
-        fetchAlerts(location.latitude, location.longitude),
+        // Temporarily disable alerts to prevent infinite loop
+        // fetchAlerts(location.latitude, location.longitude),
       ]);
       
       // Log any failures but don't throw
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
-          const operation = ['current weather', 'forecast', 'alerts'][index];
+          const operation = ['current weather', 'forecast'][index];
           console.warn(`Failed to load ${operation}:`, result.reason);
         }
       });
@@ -185,12 +203,9 @@ const WeatherScreen = memo(() => {
       // Only log if it took longer than 100ms
       const duration = performance.now() - startTime;
       if (__DEV__ && duration > 100) {
-        console.log(`🐌 loadWeatherData: ${duration.toFixed(2)}ms`, { 
-          location: `${location.latitude},${location.longitude}` 
-        });
       }
     }
-  }, [fetchCurrentWeather, fetchForecast, fetchAlerts]);
+  }, [fetchCurrentWeather, fetchForecast]); // Add stable dependencies
 
 
   const handleRefresh = useCallback(async () => {
@@ -265,6 +280,7 @@ const WeatherScreen = memo(() => {
       });
       
       setFavoriteWeatherData(weatherData);
+      lastFavoritesLoadTime.current = Date.now();
     } catch (error) {
       console.error('Error loading favorite locations:', error);
     } finally {
@@ -273,12 +289,9 @@ const WeatherScreen = memo(() => {
       // Only log if it took longer than 100ms
       const duration = performance.now() - startTime;
       if (__DEV__ && duration > 100) {
-        console.log(`🐌 loadFavoriteLocations: ${duration.toFixed(2)}ms`, { 
-          favoritesCount: favoriteLocations.length 
-        });
       }
     }
-  }, [dbInitialized, favoriteLocations.length]);
+  }, [dbInitialized]);
 
   // Handle favorite location selection
   const handleFavoriteLocationSelect = useCallback((location: Location) => {
@@ -353,59 +366,70 @@ const WeatherScreen = memo(() => {
         // Only log if it took longer than 100ms
         const duration = performance.now() - startTime;
         if (__DEV__ && duration > 100) {
-          console.log(`🐌 appInitialization: ${duration.toFixed(2)}ms`);
         }
       }
     };
     
     initApp();
-  }, [dbInitializing]); // Add dbInitializing as dependency
+  }, []); // Run only once on mount to prevent infinite loop
 
-  // Handle search params changes - optimized approach
+  // Handle search params changes - with infinite loop protection
   useEffect(() => {
     const processSearchParams = async () => {
       if (hasSearchParams && !isInitializing) {
-        // Only process if we haven't processed this search params before
-        if (processedSearchParams.current !== searchKey) {
-          processedSearchParams.current = searchKey;
+        // Check if we've already processed these search params to prevent infinite loop
+        const currentSearchKey = `${searchParams.latitude}-${searchParams.longitude}`;
+        if (processedSearchParams.current === currentSearchKey) {
+          return; // Already processed these params
+        }
+        
+        try {
+          const lat = parseFloat(searchParams.latitude as string);
+          const lon = parseFloat(searchParams.longitude as string);
           
-          try {
-            const lat = parseFloat(searchParams.latitude as string);
-            const lon = parseFloat(searchParams.longitude as string);
+          if (!isNaN(lat) && !isNaN(lon)) {
+            const location: LocationCoordinates = {
+              latitude: lat,
+              longitude: lon,
+            };
             
-            if (!isNaN(lat) && !isNaN(lon)) {
-              const location: LocationCoordinates = {
-                latitude: lat,
-                longitude: lon,
-              };
-              setSelectedLocation(location);
-              await loadWeatherData(location);
-            }
-          } catch (err) {
-            console.error('Error loading search location:', err);
+            // Mark as processed before setting state to prevent infinite loop
+            processedSearchParams.current = currentSearchKey;
+            setSelectedLocation(location);
+            
+            // Force refresh by using refreshWeather which clears and reloads data
+            await refreshWeather(location.latitude, location.longitude);
           }
+        } catch (err) {
+          console.error('Error loading search location:', err);
         }
       }
     };
     
     processSearchParams();
-  }, [hasSearchParams, searchKey, isInitializing, loadWeatherData]);
+  }, [hasSearchParams, searchKey, isInitializing, searchParams]);
 
-  // Load weather data when location is available (for manual requests)
-  useEffect(() => {
-    const loadCurrentLocationWeather = async () => {
-      if (currentLocation && !isInitializing && !selectedLocation) {
-        await loadWeatherData(currentLocation);
-      }
-    };
-    
-    loadCurrentLocationWeather();
-  }, [currentLocation, isInitializing, selectedLocation]);
 
   // Load favorites when database is ready
   useEffect(() => {
     loadFavoriteLocations();
-  }, [loadFavoriteLocations]);
+  }, []); // Function is stable, no need for dependency
+
+  // Reload favorites when screen comes into focus (e.g., returning from search)
+  useFocusEffect(
+    useCallback(() => {
+      if (dbInitialized) {
+        const now = Date.now();
+        // Only reload if it's been more than 2 seconds since last load
+        if (now - lastFavoritesLoadTime.current > 2000) {
+          loadFavoriteLocations();
+          lastFavoritesLoadTime.current = now;
+        }
+      }
+      
+      // Search params are handled in the other useEffect, no need to duplicate here
+    }, [dbInitialized]) // Remove loadFavoriteLocations dependency to prevent infinite loop
+  );
 
 
 
@@ -609,41 +633,52 @@ const WeatherScreen = memo(() => {
                 temperature={processedWeatherData.temperature}
                 unit={units.temperature}
                 size="xlarge"
+                sunrise={processedWeatherData.sunrise}
+                sunset={processedWeatherData.sunset}
+                timezone={processedWeatherData.timezone}
               />
-              <Text variant="titleMedium" style={[styles.feelsLike, { color: theme.colors.onSurfaceVariant }]}>
-                Feels like {formatTemperature(processedWeatherData.feelsLike, units.temperature)}
-              </Text>
+              {displayPreferences.showFeelsLike && (
+                <Text variant="titleMedium" style={[styles.feelsLike, { color: theme.colors.onSurfaceVariant }]}>
+                  Feels like {formatTemperature(processedWeatherData.feelsLike, units.temperature)}
+                </Text>
+              )}
             </View>
 
             {/* Weather details - no card container */}
             <View style={styles.weatherDetailsContainer}>
               <View style={styles.detailsGrid}>
-                <View style={styles.detailItem}>
-                  <Text variant="labelMedium" style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
-                    Humidity
-                  </Text>
-                  <Text variant="titleMedium" style={[styles.detailValue, { color: theme.colors.onSurface }]}>
-                    {formatHumidity(processedWeatherData.humidity)}
-                  </Text>
-                </View>
+                {displayPreferences.showHumidity && (
+                  <View style={styles.detailItem}>
+                    <Text variant="labelMedium" style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
+                      Humidity
+                    </Text>
+                    <Text variant="titleMedium" style={[styles.detailValue, { color: theme.colors.onSurface }]}>
+                      {formatHumidity(processedWeatherData.humidity)}
+                    </Text>
+                  </View>
+                )}
                 
-                <View style={styles.detailItem}>
-                  <Text variant="labelMedium" style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
-                    Wind
-                  </Text>
-                  <Text variant="titleMedium" style={[styles.detailValue, { color: theme.colors.onSurface }]}>
-                    {formatWindSpeed(processedWeatherData.windSpeed, units.windSpeed)}
-                  </Text>
-                </View>
+                {displayPreferences.showWindSpeed && (
+                  <View style={styles.detailItem}>
+                    <Text variant="labelMedium" style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
+                      Wind
+                    </Text>
+                    <Text variant="titleMedium" style={[styles.detailValue, { color: theme.colors.onSurface }]}>
+                      {formatWindSpeed(processedWeatherData.windSpeed, units.windSpeed)}
+                    </Text>
+                  </View>
+                )}
                 
-                <View style={styles.detailItem}>
-                  <Text variant="labelMedium" style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
-                    Pressure
-                  </Text>
-                  <Text variant="titleMedium" style={[styles.detailValue, { color: theme.colors.onSurface }]}>
-                    {formatPressure(processedWeatherData.pressure, units.pressure)}
-                  </Text>
-                </View>
+                {displayPreferences.showPressure && (
+                  <View style={styles.detailItem}>
+                    <Text variant="labelMedium" style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
+                      Pressure
+                    </Text>
+                    <Text variant="titleMedium" style={[styles.detailValue, { color: theme.colors.onSurface }]}>
+                      {formatPressure(processedWeatherData.pressure, units.pressure)}
+                    </Text>
+                  </View>
+                )}
                 
                 <View style={styles.detailItem}>
                   <Text variant="labelMedium" style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
@@ -728,7 +763,7 @@ const WeatherScreen = memo(() => {
               <View style={styles.hourlyForecastContainer}>
                 <View style={styles.forecastHeaderContainer}>
                   <Text variant="titleLarge" style={[styles.forecastSectionTitle, { color: theme.colors.onSurface }]}>
-                    12-Hour Forecast
+                    Hourly Forecast
                   </Text>
                   <View style={styles.forecastToggleContainer}>
                   <SegmentedButtons
@@ -736,14 +771,14 @@ const WeatherScreen = memo(() => {
                     onValueChange={(value) => setShowHourlyForecast(value === 'hourly')}
                     buttons={[
                       {
-                        value: 'daily',
-                        label: 'Daily',
-                        icon: 'calendar-today',
-                      },
-                      {
                         value: 'hourly',
                         label: 'Hourly',
                         icon: 'clock-outline',
+                      },
+                      {
+                        value: 'daily',
+                        label: 'Weekly',
+                        icon: 'calendar-today',
                       },
                     ]}
                     style={[styles.modernSegmentedButtons, { backgroundColor: theme.colors.surfaceVariant }]}
@@ -764,32 +799,32 @@ const WeatherScreen = memo(() => {
                   />
                   </View>
                 </View>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.hourlyScrollContent}
-                >
+                <View style={styles.hourlyContainer}>
                   {processedForecast.hourly.map((item, index) => (
                     <View key={`${item.dt}-${index}`} style={styles.hourlyItem}>
                       <Text variant="bodySmall" style={[styles.hourlyTime, { color: theme.colors.onSurface }]}>
                         {formatTime(item.dt)}
                       </Text>
                       <WeatherIcon condition={item.weather[0]} size={32} />
-                      <Text variant="bodyMedium" style={[styles.hourlyTemp, { color: theme.colors.onSurface }]}>
-                        {formatTemperature(item.main.temp, units.temperature).replace(/[°CF]/, '')}
-                      </Text>
+                      <TemperatureDisplay
+                        temperature={item.main.temp}
+                        unit={units.temperature}
+                        size="small"
+                        showUnit={false}
+                        color={theme.colors.onSurface}
+                      />
                       <Text variant="bodySmall" style={[styles.hourlyDesc, { color: theme.colors.onSurfaceVariant }]}>
                         {item.weather[0]?.description || ''}
                       </Text>
                     </View>
                   ))}
-                </ScrollView>
+                </View>
               </View>
             ) : (
               <View style={styles.dailyForecastContainer}>
                 <View style={styles.forecastHeaderContainer}>
                   <Text variant="titleLarge" style={[styles.forecastSectionTitle, { color: theme.colors.onSurface }]}>
-                    7-Day Forecast
+                    Weekly Forecast
                   </Text>
                   <View style={styles.forecastToggleContainer}>
                   <SegmentedButtons
@@ -797,14 +832,14 @@ const WeatherScreen = memo(() => {
                     onValueChange={(value) => setShowHourlyForecast(value === 'hourly')}
                     buttons={[
                       {
-                        value: 'daily',
-                        label: 'Daily',
-                        icon: 'calendar-today',
-                      },
-                      {
                         value: 'hourly',
                         label: 'Hourly',
                         icon: 'clock-outline',
+                      },
+                      {
+                        value: 'daily',
+                        label: 'Weekly',
+                        icon: 'calendar-today',
                       },
                     ]}
                     style={[styles.modernSegmentedButtons, { backgroundColor: theme.colors.surfaceVariant }]}
@@ -830,9 +865,7 @@ const WeatherScreen = memo(() => {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.dailyScrollContent}
                 >
-                  {Object.values(processedForecast.daily)
-                    .sort((a, b) => a.originalDate.getTime() - b.originalDate.getTime())
-                    .slice(0, 7)
+                  {processedForecast.daily
                     .map((item, index) => (
                       <View key={`${item.dt}-${index}`} style={styles.dailyItem}>
                         <Text variant="bodySmall" style={[styles.dailyName, { color: theme.colors.onSurface }]}>
@@ -840,12 +873,30 @@ const WeatherScreen = memo(() => {
                         </Text>
                         <WeatherIcon condition={item.weatherIcon} size={32} />
                         <View style={styles.dailyTemps}>
-                          <Text variant="bodyMedium" style={[styles.dailyHigh, { color: theme.colors.onSurface }]}>
-                            {formatTemperature(item.dailyHigh, units.temperature).replace(/[°CF]/, '')}
-                          </Text>
-                          <Text variant="bodySmall" style={[styles.dailyLow, { color: theme.colors.onSurfaceVariant }]}>
-                            {formatTemperature(item.dailyLow, units.temperature).replace(/[°CF]/, '')}
-                          </Text>
+                          <View style={styles.dailyHighContainer}>
+                            <Text variant="bodySmall" style={[styles.dailyLabel, { color: theme.colors.onSurface }]}>
+                              H:
+                            </Text>
+                            <TemperatureDisplay
+                              temperature={item.dailyHigh}
+                              unit={units.temperature}
+                              size="small"
+                              showUnit={false}
+                              color={theme.colors.onSurface}
+                            />
+                          </View>
+                          <View style={styles.dailyLowContainer}>
+                            <Text variant="bodySmall" style={[styles.dailyLabel, { color: theme.colors.onSurfaceVariant }]}>
+                              L:
+                            </Text>
+                            <TemperatureDisplay
+                              temperature={item.dailyLow}
+                              unit={units.temperature}
+                              size="small"
+                              showUnit={false}
+                              color={theme.colors.onSurfaceVariant}
+                            />
+                          </View>
                         </View>
                       </View>
                     ))}
@@ -891,9 +942,14 @@ const WeatherScreen = memo(() => {
                             condition={weather.weather[0] || { id: 800, main: 'Clear', description: 'clear sky', icon: '01d' }} 
                             size={32} 
                           />
-                          <Text variant="titleMedium" style={[styles.favoriteTemp, { color: theme.colors.onSurface }]}>
-                            {formatTemperature(weather.main.temp, units.temperature)}
-                          </Text>
+                          <TemperatureDisplay
+                            temperature={weather.main.temp}
+                            unit={units.temperature}
+                            size="small"
+                            sunrise={weather.sys?.sunrise}
+                            sunset={weather.sys?.sunset}
+                            timezone={weather.timezone}
+                          />
                         </View>
                       )}
                     </View>
@@ -1224,6 +1280,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontWeight: '700', // Made bolder to match other section titles
   },
+  hourlyContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    marginTop: 8,
+  },
   hourlyScrollContent: {
     paddingHorizontal: 0, // No padding - cards float off screen edges
   },
@@ -1231,11 +1293,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0, // No padding - cards float off screen edges
   },
   hourlyItem: {
-    padding: 16,
-    marginRight: 4, // Reduced spacing between icons
+    padding: 8,
     borderRadius: 12,
     alignItems: 'center',
-    minWidth: 80,
+    flex: 1,
+    marginHorizontal: 2, // Reduced margin between items
   },
   dailyItem: {
     padding: 16,
@@ -1260,6 +1322,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
     alignItems: 'center',
   },
+  dailyHighContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  dailyLowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dailyLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginRight: 2,
+  },
   dailyHigh: {
     fontWeight: '600',
   },
@@ -1277,7 +1353,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   favoriteItem: {
-    padding: 16,
+    paddingVertical: 16,
+    paddingLeft: 16,
+    paddingRight: 4, // Reduced right padding to bring button closer to edge
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1310,7 +1388,9 @@ const styles = StyleSheet.create({
   },
   removeFavoriteButton: {
     marginLeft: 8,
-    marginRight: 10, // 10px away from the edge of the favorite card
+    marginRight: 0, // No right margin since we reduced card padding
+    paddingHorizontal: 2, // Minimal internal padding
+    minWidth: 28, // Even smaller minimum width
   },
   
   // Alerts styles (no cards)

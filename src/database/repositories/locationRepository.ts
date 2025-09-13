@@ -17,7 +17,7 @@ export class LocationRepository {
       const now = new Date().toISOString();
       
       await this.db.runAsync(
-        `INSERT INTO locations 
+        `INSERT OR REPLACE INTO locations 
          (id, user_id, name, country, state, latitude, longitude, timezone, 
           is_current, is_favorite, search_count, last_searched, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

@@ -1,25 +1,25 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { List, Switch, Divider, Text, Snackbar, Button } from 'react-native-paper';
+import { List, Switch, Text, Snackbar, Button } from 'react-native-paper';
 import { useThemeContext } from '@/contexts/ThemeContext';
+import { useDisplayPreferences } from '@/contexts/DisplayPreferencesContext';
 import { UniversalHeader } from '@/components/common';
-import { useDatabase } from '@/contexts/DatabaseContext';
 import { useUnits } from '@/contexts/UnitsContext';
-import { offlineCacheService, userService } from '@/services';
 
 export default function SettingsScreen() {
   const { themeMode, setTheme, effectiveTheme, isLoading, theme } = useThemeContext();
-  const { isInitialized: dbInitialized, isInitializing: dbInitializing } = useDatabase();
   const { units, setTemperatureUnit, setWindSpeedUnit, setPressureUnit, setDistanceUnit } = useUnits();
+  const { 
+    preferences: displayPreferences, 
+    setShowFeelsLike, 
+    setShowHumidity, 
+    setShowWindSpeed, 
+    setShowPressure,
+    isLoading: displayPreferencesLoading 
+  } = useDisplayPreferences();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [cacheInfo, setCacheInfo] = useState<{
-    totalLocations: number;
-    favoriteLocations: number;
-    cachedWeatherLocations: number;
-  } | null>(null);
-  const [isLoadingCache, setIsLoadingCache] = useState(false);
   
   // Create description text to avoid template literal issues
   const getThemeDescription = () => {
@@ -115,39 +115,59 @@ export default function SettingsScreen() {
     }
   }, [units.pressure, setPressureUnit]);
 
-  const loadCacheInfo = useCallback(async () => {
-    if (!dbInitialized) return;
-    
+  // Display preferences handlers
+  const handleShowFeelsLikeChange = useCallback(async () => {
     try {
-      setIsLoadingCache(true);
-      const user = await userService.getCurrentUser();
-      const info = await offlineCacheService.getCacheInfo(user.id);
-      setCacheInfo(info);
-    } catch (error) {
-      console.error('Error loading cache info:', error);
-    } finally {
-      setIsLoadingCache(false);
-    }
-  }, [dbInitialized]);
-
-  const clearExpiredCache = useCallback(async () => {
-    try {
-      await offlineCacheService.clearExpiredCache();
-      await loadCacheInfo();
+      await setShowFeelsLike(!displayPreferences.showFeelsLike);
       setError(null);
-      setSuccessMessage('Expired cache cleared successfully');
+      setSuccessMessage(`Feels like temperature ${!displayPreferences.showFeelsLike ? 'enabled' : 'disabled'}`);
       setSnackbarVisible(true);
     } catch (error) {
-      console.error('Error clearing expired cache:', error);
-      setError('Failed to clear cache. Please try again.');
+      console.error('Error changing feels like preference:', error);
+      setError('Failed to update display preference. Please try again.');
       setSnackbarVisible(true);
     }
-  }, [loadCacheInfo]);
+  }, [displayPreferences.showFeelsLike, setShowFeelsLike]);
 
-  // Load cache info on mount
-  useEffect(() => {
-    loadCacheInfo();
-  }, [loadCacheInfo]);
+  const handleShowHumidityChange = useCallback(async () => {
+    try {
+      await setShowHumidity(!displayPreferences.showHumidity);
+      setError(null);
+      setSuccessMessage(`Humidity display ${!displayPreferences.showHumidity ? 'enabled' : 'disabled'}`);
+      setSnackbarVisible(true);
+    } catch (error) {
+      console.error('Error changing humidity preference:', error);
+      setError('Failed to update display preference. Please try again.');
+      setSnackbarVisible(true);
+    }
+  }, [displayPreferences.showHumidity, setShowHumidity]);
+
+  const handleShowWindSpeedChange = useCallback(async () => {
+    try {
+      await setShowWindSpeed(!displayPreferences.showWindSpeed);
+      setError(null);
+      setSuccessMessage(`Wind speed display ${!displayPreferences.showWindSpeed ? 'enabled' : 'disabled'}`);
+      setSnackbarVisible(true);
+    } catch (error) {
+      console.error('Error changing wind speed preference:', error);
+      setError('Failed to update display preference. Please try again.');
+      setSnackbarVisible(true);
+    }
+  }, [displayPreferences.showWindSpeed, setShowWindSpeed]);
+
+  const handleShowPressureChange = useCallback(async () => {
+    try {
+      await setShowPressure(!displayPreferences.showPressure);
+      setError(null);
+      setSuccessMessage(`Pressure display ${!displayPreferences.showPressure ? 'enabled' : 'disabled'}`);
+      setSnackbarVisible(true);
+    } catch (error) {
+      console.error('Error changing pressure preference:', error);
+      setError('Failed to update display preference. Please try again.');
+      setSnackbarVisible(true);
+    }
+  }, [displayPreferences.showPressure, setShowPressure]);
+
 
   // Memoized values for performance
   const containerStyle = useMemo(() => [
@@ -346,12 +366,16 @@ export default function SettingsScreen() {
               left={(props) => <List.Icon {...props} icon="thermometer-lines" color={theme.colors.primary} />}
               right={() => (
                 <Switch 
-                  value={true} 
+                  value={displayPreferences.showFeelsLike} 
+                  onValueChange={handleShowFeelsLikeChange}
+                  disabled={displayPreferencesLoading}
                   color={theme.colors.primary}
                   trackColor={{ false: theme.colors.outline, true: theme.colors.primary + '40' }}
                   thumbColor={theme.colors.primary}
                 />
               )}
+              onPress={handleShowFeelsLikeChange}
+              disabled={displayPreferencesLoading}
               titleStyle={[styles.listItemTitle, { color: theme.colors.onSurface }]}
               descriptionStyle={[styles.listItemDescription, { color: theme.colors.onSurfaceVariant }]}
               style={styles.listItem}
@@ -365,12 +389,16 @@ export default function SettingsScreen() {
               left={(props) => <List.Icon {...props} icon="water" color={theme.colors.primary} />}
               right={() => (
                 <Switch 
-                  value={true} 
+                  value={displayPreferences.showHumidity} 
+                  onValueChange={handleShowHumidityChange}
+                  disabled={displayPreferencesLoading}
                   color={theme.colors.primary}
                   trackColor={{ false: theme.colors.outline, true: theme.colors.primary + '40' }}
                   thumbColor={theme.colors.primary}
                 />
               )}
+              onPress={handleShowHumidityChange}
+              disabled={displayPreferencesLoading}
               titleStyle={[styles.listItemTitle, { color: theme.colors.onSurface }]}
               descriptionStyle={[styles.listItemDescription, { color: theme.colors.onSurfaceVariant }]}
               style={styles.listItem}
@@ -384,12 +412,16 @@ export default function SettingsScreen() {
               left={(props) => <List.Icon {...props} icon="weather-windy" color={theme.colors.primary} />}
               right={() => (
                 <Switch 
-                  value={true} 
+                  value={displayPreferences.showWindSpeed} 
+                  onValueChange={handleShowWindSpeedChange}
+                  disabled={displayPreferencesLoading}
                   color={theme.colors.primary}
                   trackColor={{ false: theme.colors.outline, true: theme.colors.primary + '40' }}
                   thumbColor={theme.colors.primary}
                 />
               )}
+              onPress={handleShowWindSpeedChange}
+              disabled={displayPreferencesLoading}
               titleStyle={[styles.listItemTitle, { color: theme.colors.onSurface }]}
               descriptionStyle={[styles.listItemDescription, { color: theme.colors.onSurfaceVariant }]}
               style={styles.listItem}
@@ -403,12 +435,16 @@ export default function SettingsScreen() {
               left={(props) => <List.Icon {...props} icon="gauge" color={theme.colors.primary} />}
               right={() => (
                 <Switch 
-                  value={false} 
+                  value={displayPreferences.showPressure} 
+                  onValueChange={handleShowPressureChange}
+                  disabled={displayPreferencesLoading}
                   color={theme.colors.primary}
                   trackColor={{ false: theme.colors.outline, true: theme.colors.primary + '40' }}
                   thumbColor={theme.colors.primary}
                 />
               )}
+              onPress={handleShowPressureChange}
+              disabled={displayPreferencesLoading}
               titleStyle={[styles.listItemTitle, { color: theme.colors.onSurface }]}
               descriptionStyle={[styles.listItemDescription, { color: theme.colors.onSurfaceVariant }]}
               style={styles.listItem}
@@ -419,52 +455,6 @@ export default function SettingsScreen() {
 
       {/* Notifications temporarily unavailable (requires paid subscription) */}
 
-      {/* Cache Management Section */}
-      <View style={styles.sectionContainer}>
-        <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-          Cache Management
-        </Text>
-        
-        {cacheInfo && (
-          <View style={styles.cacheInfoContainer}>
-            <View style={styles.cacheInfoRow}>
-              <Text variant="labelMedium" style={[styles.cacheInfoLabel, { color: theme.colors.onSurfaceVariant }]}>
-                Total Locations
-              </Text>
-              <Text variant="titleMedium" style={[styles.cacheInfoValue, { color: theme.colors.onSurface }]}>
-                {cacheInfo.totalLocations}
-              </Text>
-            </View>
-            <View style={styles.cacheInfoRow}>
-              <Text variant="labelMedium" style={[styles.cacheInfoLabel, { color: theme.colors.onSurfaceVariant }]}>
-                Favorite Locations
-              </Text>
-              <Text variant="titleMedium" style={[styles.cacheInfoValue, { color: theme.colors.onSurface }]}>
-                {cacheInfo.favoriteLocations}
-              </Text>
-            </View>
-            <View style={styles.cacheInfoRow}>
-              <Text variant="labelMedium" style={[styles.cacheInfoLabel, { color: theme.colors.onSurfaceVariant }]}>
-                Cached Weather
-              </Text>
-              <Text variant="titleMedium" style={[styles.cacheInfoValue, { color: theme.colors.onSurface }]}>
-                {cacheInfo.cachedWeatherLocations}
-              </Text>
-            </View>
-          </View>
-        )}
-        
-        <Button
-          mode="outlined"
-          onPress={clearExpiredCache}
-          loading={isLoadingCache}
-          disabled={isLoadingCache}
-          style={[styles.cacheButton, { borderColor: theme.colors.primary }]}
-          labelStyle={{ color: theme.colors.primary }}
-        >
-          Clear Expired Cache
-        </Button>
-      </View>
 
       {/* About Section */}
       <View style={styles.sectionContainer}>
@@ -612,31 +602,6 @@ const styles = StyleSheet.create({
   displayOptionItem: {
     borderRadius: 12,
     overflow: 'hidden',
-  },
-  // Cache info
-  cacheInfoContainer: {
-    marginVertical: 16,
-    padding: 16,
-    borderRadius: 12,
-  },
-  cacheInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  cacheInfoLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  cacheInfoValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cacheButton: {
-    marginTop: 16,
-    borderRadius: 12,
-    borderWidth: 2,
   },
   // About section
   aboutContainer: {

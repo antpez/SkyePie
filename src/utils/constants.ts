@@ -26,6 +26,7 @@ export const STORAGE_KEYS = {
   lastKnownLocation: 'last_known_location',
   theme: 'theme',
   permissions: 'permissions',
+  displayPreferences: 'display_preferences',
 } as const;
 
 export const PERMISSIONS = {

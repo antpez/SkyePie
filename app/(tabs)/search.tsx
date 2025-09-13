@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text, Snackbar } from 'react-native-paper';
-import { router } from 'expo-router';
+import { Text, Snackbar, Button } from 'react-native-paper';
+import { router, useRouter, useLocalSearchParams } from 'expo-router';
 import { LocationSearch } from '@/components';
 import { UniversalHeader } from '@/components/common';
 import { useOfflineWeather } from '@/hooks/useOfflineWeather';
@@ -12,6 +12,7 @@ import { offlineCacheService } from '@/services';
 
 export default function SearchScreen() {
   const { effectiveTheme, theme } = useThemeContext();
+  const navigation = useRouter();
   
   // Get API key from config
   const API_KEY = APP_CONFIG.api.openWeatherMap.apiKey;
@@ -21,7 +22,6 @@ export default function SearchScreen() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [favoriteLocations, setFavoriteLocations] = useState<LocationSearchResult[]>([]);
 
   // Memoized values for performance
@@ -32,19 +32,21 @@ export default function SearchScreen() {
   }, [error, successMessage]);
   const containerStyle = useMemo(() => [styles.container, { backgroundColor: theme.colors.background }], [theme.colors.background, effectiveTheme]);
 
+  // Utility function for coordinate comparison
+  const areCoordinatesEqual = useCallback((lat1: number, lon1: number, lat2: number, lon2: number, tolerance = 0.0001) => {
+    return Math.abs(lat1 - lat2) < tolerance && Math.abs(lon1 - lon2) < tolerance;
+  }, []);
+
   // Load search history
   const loadSearchHistory = useCallback(async () => {
     if (!userId) return;
     
     try {
-      setIsLoadingHistory(true);
       const history = await offlineCacheService.getSearchHistory(userId);
       setSearchHistory(history);
     } catch (error) {
       console.error('Error loading search history:', error);
       setSearchHistory([]);
-    } finally {
-      setIsLoadingHistory(false);
     }
   }, [userId]);
 
@@ -73,7 +75,7 @@ export default function SearchScreen() {
   useEffect(() => {
     loadSearchHistory();
     loadFavoriteLocations();
-  }, [loadSearchHistory, loadFavoriteLocations]);
+  }, [userId]); // Only depend on userId, not the functions
 
   const handleSearch = useCallback(async (query: string): Promise<LocationSearchResult[]> => {
     if (!query.trim()) {
@@ -91,8 +93,18 @@ export default function SearchScreen() {
           // Generate a location ID based on coordinates
           const locationId = `${results[0].latitude}-${results[0].longitude}`;
           await offlineCacheService.saveSearchHistory(query, locationId, userId);
-          // Reload history to show the new search
-          await loadSearchHistory();
+          // Update history state directly instead of reloading
+          setSearchHistory(prev => [
+            {
+              id: Date.now().toString(),
+              query,
+              locationId,
+              searchType: 'manual' as const,
+              searchedAt: new Date(),
+              createdAt: new Date(),
+            },
+            ...prev.slice(0, 9) // Keep only 10 most recent
+          ]);
         } catch (historyError) {
           console.error('Error saving search history:', historyError);
         }
@@ -105,22 +117,43 @@ export default function SearchScreen() {
       setSnackbarVisible(true);
       return [];
     }
-  }, [searchLocations, userId, loadSearchHistory]);
+  }, [searchLocations, userId]);
 
   const handleLocationSelect = useCallback((location: LocationSearchResult) => {
-    // Navigate to weather screen with selected location
-    // Navigate to the weather tab with location parameters
-    router.navigate({
-      pathname: '/(tabs)/',
-      params: {
+    // Validate location data
+    if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+      setError('Invalid location data');
+      setSnackbarVisible(true);
+      return;
+    }
+
+    try {
+      // Try multiple navigation methods
+      const navigationParams = {
         latitude: location.latitude.toString(),
         longitude: location.longitude.toString(),
-        name: location.name,
-        country: location.country,
+        name: location.name || 'Unknown Location',
+        country: location.country || '',
         state: location.state || '',
+      };
+      
+      // Method 1: Try using href format
+      const href = `/(tabs)/?latitude=${navigationParams.latitude}&longitude=${navigationParams.longitude}&name=${encodeURIComponent(navigationParams.name)}&country=${encodeURIComponent(navigationParams.country)}&state=${encodeURIComponent(navigationParams.state)}`;
+      
+      try {
+        navigation.replace(href);
+        return;
+      } catch (replaceError) {
+        // Fallback to push if replace fails
+        navigation.push(href);
       }
-    });
-  }, []);
+      
+    } catch (error) {
+      console.error('Navigation failed:', error);
+      setError('Failed to navigate to location');
+      setSnackbarVisible(true);
+    }
+  }, [navigation]);
 
   const handleClearHistory = useCallback(async () => {
     if (!userId) return;
@@ -170,8 +203,18 @@ export default function SearchScreen() {
       };
       
       await offlineCacheService.addFavoriteLocation(locationToSave, userId);
-      // Refresh favorite locations list
-      await loadFavoriteLocations();
+      // Update favorites state directly instead of reloading
+      setFavoriteLocations(prev => [
+        {
+          name: location.name,
+          country: location.country,
+          state: location.state,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          displayName: `${location.name}${location.state ? `, ${location.state}` : ''}, ${location.country}`,
+        },
+        ...prev
+      ]);
       setError(null);
       setSuccessMessage(`Added ${location.name} to favorites!`);
       setSnackbarVisible(true);
@@ -180,7 +223,7 @@ export default function SearchScreen() {
       setError('Failed to add to favorites');
       setSnackbarVisible(true);
     }
-  }, [userId, loadFavoriteLocations]);
+  }, [userId]);
 
   const handleRemoveFromFavorites = useCallback(async (location: LocationSearchResult) => {
     if (!userId) return;
@@ -189,14 +232,17 @@ export default function SearchScreen() {
       // Find the location in favorites by coordinates
       const favorites = await offlineCacheService.getFavoriteLocations(userId);
       const favoriteToRemove = favorites.find(fav => 
-        Math.abs(fav.latitude - location.latitude) < 0.0001 &&
-        Math.abs(fav.longitude - location.longitude) < 0.0001
+        areCoordinatesEqual(fav.latitude, fav.longitude, location.latitude, location.longitude)
       );
       
       if (favoriteToRemove) {
         await offlineCacheService.removeFavoriteLocation(favoriteToRemove.id);
-        // Refresh favorite locations list
-        await loadFavoriteLocations();
+        // Update favorites state directly instead of reloading
+        setFavoriteLocations(prev => 
+          prev.filter(fav => 
+            !areCoordinatesEqual(fav.latitude, fav.longitude, location.latitude, location.longitude)
+          )
+        );
         setError(null);
         setSuccessMessage(`Removed ${location.name} from favorites`);
         setSnackbarVisible(true);
@@ -206,7 +252,7 @@ export default function SearchScreen() {
       setError('Failed to remove from favorites');
       setSnackbarVisible(true);
     }
-  }, [userId, loadFavoriteLocations]);
+  }, [userId, areCoordinatesEqual]);
 
 
   return (
@@ -230,6 +276,7 @@ export default function SearchScreen() {
         favoriteLocations={favoriteLocations}
         placeholder="Search for a city or location..."
       />
+      
 
       <Snackbar
         visible={snackbarVisible}
