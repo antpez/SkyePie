@@ -10,6 +10,10 @@ interface ThemeContextType {
   setTheme: (mode: ThemeMode) => Promise<void>;
   toggleTheme: () => void;
   theme: typeof lightTheme | typeof darkTheme;
+  refreshSystemTheme: () => Promise<void>;
+  actualSystemTheme: 'light' | 'dark' | null;
+  setAndroidThemeOverride: (theme: 'light' | 'dark' | null) => void;
+  androidThemeOverride: 'light' | 'dark' | null;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -19,7 +23,17 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = React.memo(({ children }) => {
-  const { themeMode, effectiveTheme, isLoading, setTheme, toggleTheme } = useThemeHook();
+  const { 
+    themeMode, 
+    effectiveTheme, 
+    isLoading, 
+    setTheme, 
+    toggleTheme, 
+    refreshSystemTheme, 
+    actualSystemTheme, 
+    setAndroidThemeOverride, 
+    androidThemeOverride 
+  } = useThemeHook();
   
   // Memoize theme selection to prevent recreation
   const theme = useMemo(() => {
@@ -34,7 +48,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = React.memo(({ childre
     setTheme,
     toggleTheme,
     theme,
-  }), [themeMode, effectiveTheme, isLoading, setTheme, toggleTheme, theme]);
+    refreshSystemTheme,
+    actualSystemTheme,
+    setAndroidThemeOverride,
+    androidThemeOverride,
+  }), [themeMode, effectiveTheme, isLoading, setTheme, toggleTheme, theme, refreshSystemTheme, actualSystemTheme, setAndroidThemeOverride, androidThemeOverride]);
 
   return (
     <ThemeContext.Provider value={value}>

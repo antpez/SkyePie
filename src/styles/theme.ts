@@ -90,4 +90,4 @@ export const customSpacing = {
 };
 
 export type AppTheme = typeof lightTheme;
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = 'light' | 'dark' | 'auto';

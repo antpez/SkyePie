@@ -27,7 +27,7 @@ export default function SettingsScreen() {
     if (!themeMode) return 'Unknown';
     
     const baseDescription = `Current: ${themeMode}`;
-    if (themeMode === 'system' && effectiveTheme) {
+    if (themeMode === 'auto' && effectiveTheme) {
       return `${baseDescription} (${effectiveTheme})`;
     }
     return baseDescription;
@@ -52,7 +52,7 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleThemeChange = useCallback(async (newTheme: 'light' | 'dark' | 'system') => {
+  const handleThemeChange = useCallback(async (newTheme: 'light' | 'dark' | 'auto') => {
     if (!isLoading) {
       try {
         await setTheme(newTheme);
@@ -267,28 +267,29 @@ export default function SettingsScreen() {
                 style={styles.themeOptionItem}
               />
             </View>
-            <View style={[styles.themeOption, themeMode === 'system' && selectedThemeStyle]}>
+            <View style={[styles.themeOption, themeMode === 'auto' && selectedThemeStyle]}>
               <List.Item
-                title="System"
-                onPress={() => handleThemeChange('system')}
+                title="Auto"
+                onPress={() => handleThemeChange('auto')}
                 disabled={isLoading}
                 titleStyle={[
                   styles.themeOptionText,
                   { color: theme.colors.onSurface },
-                  themeMode === 'system' && selectedThemeTextStyle,
+                  themeMode === 'auto' && selectedThemeTextStyle,
                   isLoading && styles.disabledText
                 ]}
                 left={(props) => (
                   <List.Icon 
                     {...props} 
-                    icon="cog" 
-                    color={themeMode === 'system' ? theme.colors.primary : theme.colors.onSurfaceVariant} 
+                    icon="weather-sunset" 
+                    color={themeMode === 'auto' ? theme.colors.primary : theme.colors.onSurfaceVariant} 
                   />
                 )}
                 style={styles.themeOptionItem}
               />
             </View>
           </View>
+          
         </View>
       </View>
 

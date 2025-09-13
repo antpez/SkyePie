@@ -5,6 +5,9 @@ export default {
     name: "SkyePie",
     slug: "skyepie",
     version: "1.0.0",
+    plugins: [
+      "expo-router"
+    ],
     extra: {
       eas: {
         projectId: "c2589986-dccf-4d6f-8bfb-adc2d6bca8fa"
