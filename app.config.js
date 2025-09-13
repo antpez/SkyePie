@@ -8,11 +8,6 @@ export default {
     plugins: [
       "expo-router"
     ],
-    extra: {
-      eas: {
-        projectId: "c2589986-dccf-4d6f-8bfb-adc2d6bca8fa"
-      }
-    },
     assetBundlePatterns: [
       "**/*"
     ],
@@ -21,13 +16,13 @@ export default {
     },
     android: {
       package: "com.antpez.skyepie",
-      icon: "./assets/android/mipmap-mdpi/Skyepie.png",
+      icon: "./assets/android/mipmap-xxxhdpi/Skyepie.png",
       adaptiveIcon: {
         foregroundImage: "./assets/android/mipmap-mdpi/Skyepie.png",
         backgroundColor: "#ffffff"
       },
       splash: {
-        image: "./assets/splash/android_splash_xxhdpi.png",
+        image: "./assets/splash/android_xxhdpi.png",
         resizeMode: "contain",
         backgroundColor: "#87CEEB"
       },
@@ -44,7 +39,7 @@ export default {
       bundleIdentifier: "com.antpez.skyepie",
       icon: "./assets/iOS/1024.png",
       splash: {
-        image: "./assets/splash/ios_splash_1024.png",
+        image: "./assets/splash/splash_screen2.png",
         resizeMode: "contain",
         backgroundColor: "#87CEEB"
       },
@@ -63,7 +58,11 @@ export default {
       ...process.env,
       eas: {
         projectId: "c2589986-dccf-4d6f-8bfb-adc2d6bca8fa"
-      }
+      },
+      // OpenWeatherMap API configuration
+      EXPO_PUBLIC_OPENWEATHER_API_KEY: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || process.env.OPENWEATHERMAP_API_KEY || 'demo',
+      openWeatherMapWeatherMapsEnabled: true,
+      openWeatherMapFreeTierLimit: 1000, // calls per day
     }
   }
 };

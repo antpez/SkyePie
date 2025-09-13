@@ -5,4 +5,4 @@ export { ForecastRow } from './ForecastRow';
 export { HourlyForecast } from './HourlyForecast';
 export { WeatherDetails } from './WeatherDetails';
 export { WeatherAlerts } from './WeatherAlerts';
-export { WeatherMap } from './WeatherMap';
+export { default as WeatherMap } from './WeatherMap';

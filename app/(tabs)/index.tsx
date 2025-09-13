@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from '
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { Text, FAB, Snackbar, Button, SegmentedButtons } from 'react-native-paper';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts, WeatherIcon, TemperatureDisplay } from '@/components';
+import { ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts, WeatherIcon, TemperatureDisplay, WeatherMap } from '@/components';
 import { NetworkErrorDisplay, ConsistentCard, WeatherSkeleton, UniversalHeader } from '@/components/common';
 import { FavoriteLocationCard } from '@/components/location';
 import { useLocation } from '@/hooks';
@@ -906,6 +906,23 @@ const WeatherScreen = memo(() => {
           </View>
         )}
 
+        {/* Weather Map Section */}
+        {locationToUse && isApiKeyConfigured && (
+          <View style={styles.weatherMapContainer}>
+            <WeatherMap
+              center={{
+                lat: locationToUse.latitude,
+                lon: locationToUse.longitude,
+              }}
+              zoom={8}
+              locationName={processedWeatherData?.name || 'Current Location'}
+              apiKey={API_KEY}
+              showControls={true}
+              showLegend={true}
+            />
+          </View>
+        )}
+
         {/* Favorites Section - no card container */}
         {favoriteLocations.length > 0 && (
           <View style={styles.favoritesContainer}>
@@ -1047,6 +1064,10 @@ const styles = StyleSheet.create({
   errorContainer: {
     marginHorizontal: 16,
     marginBottom: 16,
+  },
+  weatherMapContainer: {
+    marginHorizontal: 36, // Match forecastHeaderContainer
+    marginBottom: 24,
   },
   forecastContainer: {
     marginBottom: 24,
