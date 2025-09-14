@@ -31,7 +31,6 @@ export default {
     slug: "skyepie",
     version: "1.0.0",
     runtimeVersion: getRuntimeVersion(),
-    channel: getChannelName(),
     plugins: [
       "expo-router",
       [
@@ -60,7 +59,6 @@ export default {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
-      edgeToEdge: true,
       splash: {
         image: "",
         resizeMode: "cover",
@@ -79,7 +77,6 @@ export default {
         "light": "./assets/icon-1757816287706-2.png",
         "dark": "./assets/icon-1757816287706-2.png",
         "tinted": "./assets/icon-1757816287706-2.png"
-      }
       },
       splash: {
         image: "",
@@ -96,7 +93,6 @@ export default {
     updates: {
       url: "https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa",
       runtimeVersion: getRuntimeVersion(),
-      channel: getChannelName(),
       requestHeaders: {
         "expo-runtime-version": getRuntimeVersion(),
         "expo-channel-name": getChannelName(),
@@ -114,4 +110,5 @@ export default {
       openWeatherMapWeatherMapsEnabled: true,
       openWeatherMapFreeTierLimit: 1000, // calls per day
     }
-  };
+  }
+};
