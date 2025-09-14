@@ -24,6 +24,7 @@ export const STORAGE_KEYS = {
   favoriteLocations: 'favorite_locations',
   searchHistory: 'search_history',
   lastKnownLocation: 'last_known_location',
+  selectedLocation: 'selected_location',
   theme: 'theme',
   permissions: 'permissions',
   displayPreferences: 'display_preferences',

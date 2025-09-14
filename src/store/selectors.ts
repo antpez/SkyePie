@@ -12,6 +12,7 @@ export const selectLastUpdated = (state: RootState) => state.weather.lastUpdated
 // Location selectors
 export const selectLocation = (state: RootState) => state.location;
 export const selectCurrentLocation = (state: RootState) => state.location.currentLocation;
+export const selectSelectedLocation = (state: RootState) => state.location.selectedLocation;
 export const selectPermissionStatus = (state: RootState) => state.location.permissionStatus;
 
 // Settings selectors

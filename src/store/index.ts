@@ -12,11 +12,43 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['persist/PERSIST'],
-        ignoredPaths: ['weather.lastUpdated', 'location.lastUpdated'],
+        ignoredActions: [
+          'persist/PERSIST',
+          'location/setCurrentLocation',
+          'location/setSelectedLocation'
+        ],
+        ignoredPaths: [
+          'weather.lastUpdated', 
+          'location.lastUpdated',
+          'location.currentLocation.createdAt',
+          'location.currentLocation.updatedAt',
+          'location.currentLocation.lastSearched',
+          'location.selectedLocation.createdAt',
+          'location.selectedLocation.updatedAt',
+          'location.selectedLocation.lastSearched',
+          'location.favoriteLocations.createdAt',
+          'location.favoriteLocations.updatedAt',
+          'location.favoriteLocations.lastSearched',
+          'settings.settings.createdAt',
+          'settings.settings.updatedAt'
+        ],
       },
       immutableCheck: {
-        ignoredPaths: ['weather.lastUpdated', 'location.lastUpdated'],
+        ignoredPaths: [
+          'weather.lastUpdated', 
+          'location.lastUpdated',
+          'location.currentLocation.createdAt',
+          'location.currentLocation.updatedAt',
+          'location.currentLocation.lastSearched',
+          'location.selectedLocation.createdAt',
+          'location.selectedLocation.updatedAt',
+          'location.selectedLocation.lastSearched',
+          'location.favoriteLocations.createdAt',
+          'location.favoriteLocations.updatedAt',
+          'location.favoriteLocations.lastSearched',
+          'settings.settings.createdAt',
+          'settings.settings.updatedAt'
+        ],
       },
     }),
 });

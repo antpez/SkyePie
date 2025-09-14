@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, Card, Button, FAB, SegmentedButtons } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
@@ -44,12 +44,25 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = React.memo(
     setLogConfig(performanceMonitor.getLogConfig());
   }, []);
 
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (visible) {
       refreshStats();
-      const interval = setInterval(refreshStats, 1000); // Update every second
-      return () => clearInterval(interval);
+      intervalRef.current = setInterval(refreshStats, 1000); // Update every second
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [visible, refreshStats]);
 
   if (!visible) return null;

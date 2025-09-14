@@ -33,7 +33,20 @@ export default {
     runtimeVersion: getRuntimeVersion(),
     channel: getChannelName(),
     plugins: [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "cover",
+          "dark": {
+            "backgroundColor": "#000000",
+            "image": ""
+          },
+          "imageWidth": 200,
+        }
+      ]
     ],
     assetBundlePatterns: [
       "**/*"
@@ -43,14 +56,14 @@ export default {
     },
     android: {
       package: "com.antpez.skyepie",
-      icon: "",
       adaptiveIcon: {
-        foregroundImage: "./assets/android/mipmap-mdpi/Skyepie.png",
+        foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
+      edgeToEdge: true,
       splash: {
         image: "",
-        resizeMode: "contain",
+        resizeMode: "cover",
         backgroundColor: "#87CEEB"
       },
       runtimeVersion: getRuntimeVersion(),
@@ -61,11 +74,17 @@ export default {
       ]
     },
     ios: {
-      bundleIdentifier: "com.antpez.skyepie",
-      icon: "",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.antpez.skyepie",
+      "icon": {
+        "light": "./assets/icon-1757816287706-2.png",
+        "dark": "./assets/icon-1757816287706-2.png",
+        "tinted": "./assets/icon-1757816287706-2.png"
+      }
+      },
       splash: {
         image: "",
-        resizeMode: "contain",
+        resizeMode: "cover",
         backgroundColor: "#87CEEB"
       },
       runtimeVersion: getRuntimeVersion(),
@@ -96,5 +115,4 @@ export default {
       openWeatherMapWeatherMapsEnabled: true,
       openWeatherMapFreeTierLimit: 1000, // calls per day
     }
-  }
-};
+  };

@@ -514,6 +514,7 @@ export const useOfflineWeather = (apiKey?: string) => {
     alerts,
     isLoading,
     error,
+    setError,
     networkError,
     lastUpdated,
     isOffline,

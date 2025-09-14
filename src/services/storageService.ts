@@ -126,6 +126,15 @@ export class StorageService {
     return this.getItem<Location>(STORAGE_KEYS.lastKnownLocation);
   }
 
+  // Selected Location (for weather display)
+  async saveSelectedLocation(location: Location | null): Promise<void> {
+    return this.setItem(STORAGE_KEYS.selectedLocation, location);
+  }
+
+  async getSelectedLocation(): Promise<Location | null> {
+    return this.getItem<Location>(STORAGE_KEYS.selectedLocation);
+  }
+
   // Theme
   async saveTheme(theme: 'light' | 'dark' | 'system'): Promise<void> {
     return this.setItem(STORAGE_KEYS.theme, theme);

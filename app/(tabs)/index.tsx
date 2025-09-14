@@ -11,11 +11,15 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { useUnits } from '@/contexts/UnitsContext';
 import { useDisplayPreferences } from '@/contexts/DisplayPreferencesContext';
 import { useDatabase } from '@/contexts/DatabaseContext';
+import { useDispatch, useSelector } from 'react-redux';
+import { setSelectedLocation, setCurrentLocation } from '@/store/slices/locationSlice';
+import { selectSelectedLocation, selectCurrentLocation } from '@/store/selectors';
 import { LocationCoordinates, Location } from '@/types';
 import { APP_CONFIG } from '@/config/app';
-import { offlineCacheService, userService } from '@/services';
+import { offlineCacheService, userService, storageService } from '@/services';
 import { formatTemperature, formatWindSpeed, formatHumidity, formatPressure, formatVisibility, formatTime, formatDayOfWeek } from '@/utils/formatters';
 import { performanceMonitor } from '@/utils/performanceMonitor';
+import { errorLogger } from '@/utils/errorLogger';
 import '@/config/performance'; // Initialize performance monitoring
 
 const WeatherScreen = memo(() => {
@@ -41,6 +45,18 @@ const WeatherScreen = memo(() => {
   const { isInitialized: dbInitialized, isInitializing: dbInitializing, error: dbError } = useDatabase();
   const { currentLocation, permissionStatus, getCurrentLocation } = useLocation();
   const searchParams = useLocalSearchParams();
+  const dispatch = useDispatch();
+  const selectedLocation = useSelector(selectSelectedLocation);
+  const reduxCurrentLocation = useSelector(selectCurrentLocation);
+  
+  // Debug Redux state (commented out for production)
+  // useEffect(() => {
+  //   console.log('Redux selectedLocation changed:', selectedLocation?.name || 'none');
+  // }, [selectedLocation]);
+  
+  // useEffect(() => {
+  //   console.log('Redux currentLocation changed:', reduxCurrentLocation?.name || 'none');
+  // }, [reduxCurrentLocation]);
   
   // Get API key from config - memoized to prevent recreation
   const API_KEY = useMemo(() => APP_CONFIG.api.openWeatherMap.apiKey, []);
@@ -56,6 +72,7 @@ const WeatherScreen = memo(() => {
     alerts,
     isLoading, 
     error, 
+    setError,
     networkError,
     isOffline,
     isOnline,
@@ -73,7 +90,6 @@ const WeatherScreen = memo(() => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [hasCachedData, setHasCachedData] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<LocationCoordinates | null>(null);
   const [showHourlyForecast, setShowHourlyForecast] = useState(true);
   const [favoriteLocations, setFavoriteLocations] = useState<Location[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
@@ -88,7 +104,22 @@ const WeatherScreen = memo(() => {
   }, []); // Remove dependency to prevent infinite loop
 
   // Memoized values for performance - optimized dependencies
-  const locationToUse = useMemo(() => selectedLocation || currentLocation, [selectedLocation, currentLocation]);
+  const locationToUse = useMemo(() => {
+    if (selectedLocation) {
+      return {
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
+      };
+    }
+    // Use Redux current location if available, otherwise fall back to hook's current location
+    if (reduxCurrentLocation) {
+      return {
+        latitude: reduxCurrentLocation.latitude,
+        longitude: reduxCurrentLocation.longitude,
+      };
+    }
+    return currentLocation;
+  }, [selectedLocation, reduxCurrentLocation, currentLocation]);
   const hasSearchParams = useMemo(() => 
     !!(searchParams.latitude && searchParams.longitude), 
     [searchParams.latitude, searchParams.longitude]
@@ -181,6 +212,15 @@ const WeatherScreen = memo(() => {
     const startTime = performance.now();
     
     try {
+      // Validate location coordinates
+      if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+        throw new Error('Invalid location coordinates provided');
+      }
+      
+      if (location.latitude < -90 || location.latitude > 90 || location.longitude < -180 || location.longitude > 180) {
+        throw new Error('Location coordinates are out of valid range');
+      }
+      
       // Use Promise.allSettled to prevent one failure from stopping others
       const results = await Promise.allSettled([
         fetchCurrentWeather(location.latitude, location.longitude),
@@ -193,19 +233,37 @@ const WeatherScreen = memo(() => {
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
           const operation = ['current weather', 'forecast'][index];
-          console.warn(`Failed to load ${operation}:`, result.reason);
+          errorLogger.warn(`Failed to load ${operation}`, 'WeatherScreen', {
+            operation,
+            error: result.reason,
+            location: { latitude: location.latitude, longitude: location.longitude }
+          });
+          
+          // Set error state for critical failures
+          if (index === 0 && !currentWeather) { // Current weather is critical
+            setError(`Failed to load weather data: ${result.reason}`);
+          }
         }
       });
     } catch (err) {
-      console.error('Error loading weather data:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      errorLogger.error('Error loading weather data', err as Error, 'WeatherScreen', {
+        location: { latitude: location.latitude, longitude: location.longitude },
+        duration: performance.now() - startTime
+      });
+      setError(errorMessage);
       setSnackbarVisible(true);
     } finally {
       // Only log if it took longer than 100ms
       const duration = performance.now() - startTime;
       if (__DEV__ && duration > 100) {
+        errorLogger.info(`Weather data loading took ${duration.toFixed(2)}ms`, 'WeatherScreen', {
+          duration,
+          location: { latitude: location.latitude, longitude: location.longitude }
+        });
       }
     }
-  }, [fetchCurrentWeather, fetchForecast]); // Add stable dependencies
+  }, [fetchCurrentWeather, fetchForecast, currentWeather]); // Add stable dependencies
 
 
   const handleRefresh = useCallback(async () => {
@@ -224,16 +282,46 @@ const WeatherScreen = memo(() => {
 
   const handleLocationPress = useCallback(async () => {
     try {
+      setError(null); // Clear any existing errors
       const location = await getCurrentLocation();
-      if (location) {
-        setSelectedLocation(null); // Clear selected location
-        await loadWeatherData(location);
+      
+      if (!location) {
+        throw new Error('Unable to get current location. Please check your location permissions.');
       }
+      
+      // Validate location data
+      if (typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+        throw new Error('Invalid location data received');
+      }
+      
+      // Create a Location object for Redux
+      const locationObj: Location = {
+        id: `current-${location.latitude}-${location.longitude}`,
+        name: 'Current Location',
+        country: '',
+        state: '',
+        latitude: location.latitude,
+        longitude: location.longitude,
+        isCurrent: true,
+        isFavorite: false,
+        searchCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      dispatch(setCurrentLocation(locationObj));
+      dispatch(setSelectedLocation(null)); // Clear selected location
+      await loadWeatherData(location);
     } catch (err) {
-      console.error('Error getting current location:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get current location';
+      errorLogger.error('Error getting current location', err as Error, 'WeatherScreen', {
+        action: 'getCurrentLocation',
+        errorType: err instanceof Error ? err.constructor.name : 'Unknown'
+      });
+      setError(errorMessage);
       setSnackbarVisible(true);
     }
-  }, [getCurrentLocation, loadWeatherData]);
+  }, [getCurrentLocation, loadWeatherData, dispatch]);
 
   // Load favorite locations with performance optimization
   const loadFavoriteLocations = useCallback(async () => {
@@ -295,13 +383,13 @@ const WeatherScreen = memo(() => {
 
   // Handle favorite location selection
   const handleFavoriteLocationSelect = useCallback((location: Location) => {
+    dispatch(setSelectedLocation(location));
     const locationCoords: LocationCoordinates = {
       latitude: location.latitude,
       longitude: location.longitude,
     };
-    setSelectedLocation(locationCoords);
     loadWeatherData(locationCoords);
-  }, [loadWeatherData]);
+  }, [loadWeatherData, dispatch]);
 
   // Handle remove favorite
   const handleRemoveFavorite = useCallback(async (locationId: string) => {
@@ -337,10 +425,27 @@ const WeatherScreen = memo(() => {
         
         setIsInitializing(false);
         
-        // Automatically request location when app starts
+        // Try current location first
         try {
           const location = await getCurrentLocation();
           if (location) {
+            // Create a Location object for Redux
+            const locationObj: Location = {
+              id: `current-${location.latitude}-${location.longitude}`,
+              name: 'Current Location',
+              country: '',
+              state: '',
+              latitude: location.latitude,
+              longitude: location.longitude,
+              isCurrent: true,
+              isFavorite: false,
+              searchCount: 0,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            
+            dispatch(setCurrentLocation(locationObj));
+            
             // Try fast initialization first (load cached data immediately)
             const hasCached = await fastInitialize(location.latitude, location.longitude);
             setHasCachedData(hasCached);
@@ -395,7 +500,23 @@ const WeatherScreen = memo(() => {
             
             // Mark as processed before setting state to prevent infinite loop
             processedSearchParams.current = currentSearchKey;
-            setSelectedLocation(location);
+            
+            // Create a Location object for Redux
+            const locationObj: Location = {
+              id: `search-${lat}-${lon}`,
+              name: searchParams.name as string || 'Unknown Location',
+              country: searchParams.country as string || '',
+              state: searchParams.state as string || '',
+              latitude: lat,
+              longitude: lon,
+              isCurrent: false,
+              isFavorite: false,
+              searchCount: 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            
+            dispatch(setSelectedLocation(locationObj));
             
             // Force refresh by using refreshWeather which clears and reloads data
             await refreshWeather(location.latitude, location.longitude);
@@ -415,20 +536,69 @@ const WeatherScreen = memo(() => {
     loadFavoriteLocations();
   }, []); // Function is stable, no need for dependency
 
-  // Reload favorites when screen comes into focus (e.g., returning from search)
-  useFocusEffect(
-    useCallback(() => {
-      if (dbInitialized) {
-        const now = Date.now();
-        // Only reload if it's been more than 2 seconds since last load
-        if (now - lastFavoritesLoadTime.current > 2000) {
-          loadFavoriteLocations();
-          lastFavoritesLoadTime.current = now;
+  // Persist selected location when it changes
+  useEffect(() => {
+    const saveSelectedLocation = async () => {
+      if (selectedLocation) {
+        try {
+          await storageService.saveSelectedLocation(selectedLocation);
+          errorLogger.info('Selected location saved successfully', 'WeatherScreen', {
+            locationId: selectedLocation.id,
+            locationName: selectedLocation.name
+          });
+        } catch (err) {
+          errorLogger.error('Failed to save selected location', err as Error, 'WeatherScreen', {
+            locationId: selectedLocation.id,
+            locationName: selectedLocation.name
+          });
         }
       }
+    };
+    
+    saveSelectedLocation();
+  }, [selectedLocation]);
+
+  // Reload favorites and restore selected location when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      const restoreLocationAndLoadFavorites = async () => {
+        if (dbInitialized) {
+          const now = Date.now();
+          // Only reload if it's been more than 2 seconds since last load
+          if (now - lastFavoritesLoadTime.current > 2000) {
+            loadFavoriteLocations();
+            lastFavoritesLoadTime.current = now;
+          }
+        }
+        
+        // Restore selected location if we don't have one in Redux but have one in storage
+        if (!selectedLocation) {
+          try {
+            const savedSelectedLocation = await storageService.getSelectedLocation();
+            if (savedSelectedLocation) {
+              dispatch(setSelectedLocation(savedSelectedLocation));
+              // Load weather for the saved location
+              const hasCached = await fastInitialize(savedSelectedLocation.latitude, savedSelectedLocation.longitude);
+              setHasCachedData(hasCached);
+              await loadWeatherData({
+                latitude: savedSelectedLocation.latitude,
+                longitude: savedSelectedLocation.longitude,
+              });
+              errorLogger.info('Selected location restored from storage', 'WeatherScreen', {
+                locationId: savedSelectedLocation.id,
+                locationName: savedSelectedLocation.name
+              });
+            }
+          } catch (err) {
+            errorLogger.error('Failed to restore selected location on focus', err as Error, 'WeatherScreen', {
+              action: 'restoreLocationOnFocus'
+            });
+          }
+        }
+      };
       
-      // Search params are handled in the other useEffect, no need to duplicate here
-    }, [dbInitialized]) // Remove loadFavoriteLocations dependency to prevent infinite loop
+      restoreLocationAndLoadFavorites();
+    }, [dbInitialized, selectedLocation, dispatch, fastInitialize, loadWeatherData, loadFavoriteLocations]) // Optimized dependencies
   );
 
 

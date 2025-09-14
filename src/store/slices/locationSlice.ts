@@ -3,6 +3,7 @@ import { Location, LocationSearchResult, LocationPermissionStatus } from '../../
 
 interface LocationState {
   currentLocation: Location | null;
+  selectedLocation: Location | null;
   favoriteLocations: Location[];
   searchHistory: LocationSearchResult[];
   permissionStatus: LocationPermissionStatus;
@@ -12,6 +13,7 @@ interface LocationState {
 
 const initialState: LocationState = {
   currentLocation: null,
+  selectedLocation: null,
   favoriteLocations: [],
   searchHistory: [],
   permissionStatus: {
@@ -29,6 +31,10 @@ export const locationSlice = createSlice({
   reducers: {
     setCurrentLocation: (state, action: PayloadAction<Location>) => {
       state.currentLocation = action.payload;
+      state.error = null;
+    },
+    setSelectedLocation: (state, action: PayloadAction<Location | null>) => {
+      state.selectedLocation = action.payload;
       state.error = null;
     },
     setFavoriteLocations: (state, action: PayloadAction<Location[]>) => {
@@ -79,11 +85,16 @@ export const locationSlice = createSlice({
       state.currentLocation = null;
       state.error = null;
     },
+    clearSelectedLocation: (state) => {
+      state.selectedLocation = null;
+      state.error = null;
+    },
   },
 });
 
 export const {
   setCurrentLocation,
+  setSelectedLocation,
   setFavoriteLocations,
   addFavoriteLocation,
   removeFavoriteLocation,
@@ -94,6 +105,7 @@ export const {
   setLoading,
   setError,
   clearLocation,
+  clearSelectedLocation,
 } = locationSlice.actions;
 
 export default locationSlice.reducer;
