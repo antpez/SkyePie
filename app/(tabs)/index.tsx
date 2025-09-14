@@ -915,9 +915,7 @@ const WeatherScreen = memo(() => {
                 lon: locationToUse.longitude,
               }}
               zoom={8}
-              locationName={processedWeatherData?.name || 'Current Location'}
               apiKey={API_KEY}
-              showControls={true}
               showLegend={true}
             />
           </View>
@@ -1402,6 +1400,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 12,
+    gap: 8,
   },
   favoriteTemp: {
     marginLeft: 8,

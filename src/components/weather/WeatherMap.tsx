@@ -142,7 +142,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
         // Map layer types to legend types
         let legendType = layer.type;
         switch (layer.type) {
-          case 'clouds_new':
+          case 'clouds':
             legendType = 'clouds';
             break;
           case 'rain_accumulation':
@@ -158,7 +158,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
             break;
           case 'snow_accumulation':
           case 'snow_depth':
-            legendType = 'snow';
+            legendType = 'precipitation';
             break;
         }
         
@@ -185,13 +185,14 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
         case 'precipitation_intensity':
           url = `https://tile.openweathermap.org/map/precipitation/{z}/{x}/{y}.png?appid=${apiKeyValue}`;
           break;
-        case 'clouds_new':
+        case 'clouds':
           url = `https://tile.openweathermap.org/map/clouds/{z}/{x}/{y}.png?appid=${apiKeyValue}`;
           break;
-        case 'wind_new':
+        case 'wind_speed':
+        case 'wind_arrows':
           url = `https://tile.openweathermap.org/map/wind/{z}/{x}/{y}.png?appid=${apiKeyValue}`;
           break;
-        case 'temp_new':
+        case 'air_temperature':
           url = `https://tile.openweathermap.org/map/temp/{z}/{x}/{y}.png?appid=${apiKeyValue}`;
           break;
         default:
@@ -525,9 +526,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
       color: theme.colors.onPrimary,
       fontSize: 12,
       fontWeight: '600',
-    },
-    infoButton: {
-      marginLeft: 8,
     },
   });
 

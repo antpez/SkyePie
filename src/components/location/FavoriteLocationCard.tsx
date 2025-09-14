@@ -166,15 +166,17 @@ export const FavoriteLocationCard: React.FC<FavoriteLocationCardProps> = memo(({
             ) : (
               <View style={styles.weatherInfo}>
                 <View style={styles.weatherMain}>
-                  <WeatherIcon
-                    condition={{
-                      id: 0, // Default ID for weather condition
-                      main: weatherPreview.condition,
-                      description: weatherPreview.description,
-                      icon: weatherPreview.icon
-                    }}
-                    size={32}
-                  />
+                  <View style={styles.weatherIconContainer}>
+                    <WeatherIcon
+                      condition={{
+                        id: 0, // Default ID for weather condition
+                        main: weatherPreview.condition,
+                        description: weatherPreview.description,
+                        icon: weatherPreview.icon
+                      }}
+                      size={32}
+                    />
+                  </View>
                   <View style={styles.temperatureContainer}>
                     <TemperatureDisplay
                       temperature={weatherPreview.temperature}
@@ -268,8 +270,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  weatherIconContainer: {
+    paddingRight: 50,
+  },
   temperatureContainer: {
-    marginLeft: 12,
+    marginLeft: 50,
     flex: 1,
   },
   temperature: {

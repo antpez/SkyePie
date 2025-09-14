@@ -25,6 +25,19 @@ export class WeatherMapsService {
       clouds: 'clouds_new',
       pressure: 'pressure_new',
       visibility: 'visibility_new',
+      convective_precipitation: 'precipitation_new',
+      precipitation_intensity: 'precipitation_new',
+      rain_accumulation: 'precipitation_new',
+      snow_accumulation: 'precipitation_new',
+      snow_depth: 'precipitation_new',
+      wind_speed: 'wind_new',
+      wind_arrows: 'wind_new',
+      atmospheric_pressure: 'pressure_new',
+      air_temperature: 'temp_new',
+      dew_point: 'temp_new',
+      soil_temperature: 'temp_new',
+      soil_temperature_deep: 'temp_new',
+      humidity: 'humidity_new',
     };
 
     const layerName = layerMap[layer];

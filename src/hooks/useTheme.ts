@@ -19,7 +19,7 @@ export const useTheme = () => {
       const migratedTheme = savedTheme === 'system' ? 'auto' : savedTheme;
       if (savedTheme === 'system') {
         console.log('Migrating theme from system to auto');
-        await storageService.saveTheme('auto');
+        await storageService.saveTheme('system');
       }
       
       setThemeMode(migratedTheme);
@@ -47,7 +47,7 @@ export const useTheme = () => {
         Appearance: currentSystemTheme,
         Platform: require('react-native').Platform.OS
       });
-      setActualSystemTheme(currentSystemTheme);
+      setActualSystemTheme(currentSystemTheme || null);
     } catch (error) {
       console.error('Error loading theme:', error);
     } finally {
@@ -58,7 +58,9 @@ export const useTheme = () => {
   const saveTheme = useCallback(async (mode: ThemeMode) => {
     try {
       console.log('Saving theme:', mode);
-      await storageService.saveTheme(mode);
+      // Convert 'auto' to 'system' for storage service compatibility
+      const storageMode = mode === 'auto' ? 'system' : mode;
+      await storageService.saveTheme(storageMode);
       setThemeMode(mode);
       console.log('Theme saved and state updated:', mode);
     } catch (error) {
@@ -94,7 +96,7 @@ export const useTheme = () => {
       return effective;
     }
     
-    if (themeMode === 'system') {
+    if (themeMode === 'auto' as ThemeMode) {
       // For Android, since we hide the system option, default to light
       if (require('react-native').Platform.OS === 'android') {
         console.log('Android system mode - defaulting to light (system option hidden)');
@@ -290,7 +292,7 @@ export const useTheme = () => {
           'Appearance.getColorScheme()': Appearance.getColorScheme()
         });
       }
-      setActualSystemTheme(colorScheme);
+      setActualSystemTheme(colorScheme || null);
     });
 
     return () => subscription?.remove();

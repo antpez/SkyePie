@@ -69,11 +69,11 @@ export const DEFAULT_WEATHER_MAP_LAYERS: WeatherMapLayer[] = [
     id: 'clouds_new',
     name: 'Clouds',
     description: 'Cloud coverage',
-    type: 'clouds_new',
+    type: 'clouds',
     opacity: 0.7,
     visible: false,
     zIndex: 2,
-    category: 'clouds',
+    category: 'pressure',
     icon: '☁️',
   },
   {
@@ -233,11 +233,6 @@ export const WEATHER_MAP_TILE_LAYERS: { [key in WeatherMapType]: MapTileLayer } 
   },
   air_temperature: {
     url: 'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid={API_KEY}',
-    attribution: 'OpenWeatherMap',
-    maxZoom: 18,
-  },
-  clouds_new: {
-    url: 'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid={API_KEY}',
     attribution: 'OpenWeatherMap',
     maxZoom: 18,
   },
