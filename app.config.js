@@ -73,6 +73,7 @@ export default {
     ios: {
       "supportsTablet": true,
       "bundleIdentifier": "com.antpez.skyepie",
+      "deploymentTarget": "15.1",
       "icon": {
         "light": "./assets/icon-1757816287706-2.png",
         "dark": "./assets/icon-1757816287706-2.png",
