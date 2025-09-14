@@ -1,8 +1,9 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useEffect } from 'react';
 import { View, StyleSheet, Text, Image } from 'react-native';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { WeatherCondition } from '../../types';
 import { performanceMonitor } from '../../utils/performanceMonitor';
+import { imageLoader } from '../../utils/imageLoader';
 
 // Direct image imports for weather icons
 const weatherIcons = {
@@ -95,6 +96,11 @@ export const WeatherIcon: React.FC<WeatherIconProps> = React.memo(({
   // Check if we have a valid image source (require() should return a number for local images)
   const hasValidImage = useMemo(() => {
     return weatherIconImage && (typeof weatherIconImage === 'number' || (typeof weatherIconImage === 'object' && weatherIconImage.uri));
+  }, [weatherIconImage]);
+
+  // Check if image is preloaded for better performance
+  const isImagePreloaded = useMemo(() => {
+    return imageLoader.isPreloaded(weatherIconImage);
   }, [weatherIconImage]);
   
   // Memoize accessibility label

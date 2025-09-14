@@ -39,22 +39,66 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
   const [showLayerModal, setShowLayerModal] = useState(false);
   const [localLayers, setLocalLayers] = useState<WeatherMapLayer[]>(layers.length > 0 ? layers : DEFAULT_WEATHER_MAP_LAYERS);
   const webViewRef = useRef<WebView>(null);
+  const [lastCenter, setLastCenter] = useState<{lat: number, lon: number} | null>(null);
+  const [forceRefresh, setForceRefresh] = useState(0);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Update map when center changes
+  // Update map when center changes with debouncing
   useEffect(() => {
-    if (webViewRef.current && center) {
-      webViewRef.current.injectJavaScript(`
-        if (window.map && window.map.setView) {
-          window.map.setView([${center.lat}, ${center.lon}], ${zoom});
-          
-          // Update user marker position
-          if (window.userMarker) {
-            window.userMarker.setLatLng([${center.lat}, ${center.lon}]);
-          }
+    if (webViewRef.current && center && !isUpdating) {
+      // Check if center actually changed
+      const centerChanged = !lastCenter || 
+        Math.abs(lastCenter.lat - center.lat) > 0.0001 || 
+        Math.abs(lastCenter.lon - center.lon) > 0.0001;
+      
+      // Check if coordinates changed significantly (more than 1 degree) - force refresh
+      const significantChange = !lastCenter || 
+        Math.abs(lastCenter.lat - center.lat) > 1 || 
+        Math.abs(lastCenter.lon - center.lon) > 1;
+      
+      if (centerChanged) {
+        if (__DEV__) {
+          console.log('🗺️ WeatherMap updating to:', center.lat, center.lon, 'Significant:', significantChange);
         }
-      `);
+        
+        setIsUpdating(true);
+        setLastCenter({ lat: center.lat, lon: center.lon });
+        
+        if (significantChange) {
+          setForceRefresh(prev => prev + 1);
+        }
+        
+        // Add a small delay to ensure WebView is ready
+        const timeoutId = setTimeout(() => {
+          webViewRef.current?.injectJavaScript(`
+            if (window.map && window.map.setView) {
+              window.map.setView([${center.lat}, ${center.lon}], ${zoom});
+              
+              // Update user marker position
+              if (window.userMarker) {
+                window.userMarker.setLatLng([${center.lat}, ${center.lon}]);
+              }
+              
+              // Notify that map was updated
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'mapUpdated',
+                  lat: ${center.lat},
+                  lon: ${center.lon}
+                }));
+              }
+            }
+          `);
+          setIsUpdating(false);
+        }, 100);
+        
+        return () => {
+          clearTimeout(timeoutId);
+          setIsUpdating(false);
+        };
+      }
     }
-  }, [center.lat, center.lon, zoom]);
+  }, [center.lat, center.lon, zoom, lastCenter, isUpdating]);
 
   // Handle WebView messages
   const handleWebViewMessage = useCallback((event: any) => {
@@ -63,11 +107,30 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
       
       switch (data.type) {
         case 'webViewReady':
-          console.log('WebView ready message received:', data.message);
+          // if (__DEV__) {
+          //   console.log('WebView ready message received:', data.message);
+          // }
           break;
         case 'mapReady':
-          console.log('Map ready message received');
+          // if (__DEV__) {
+          //   console.log('Map ready message received');
+          // }
           setIsMapLoading(false);
+          // Update map to current center when map is ready
+          if (center) {
+            setTimeout(() => {
+              webViewRef.current?.injectJavaScript(`
+                if (window.map && window.map.setView) {
+                  window.map.setView([${center.lat}, ${center.lon}], ${zoom});
+                  
+                  // Update user marker position
+                  if (window.userMarker) {
+                    window.userMarker.setLatLng([${center.lat}, ${center.lon}]);
+                  }
+                }
+              `);
+            }, 200);
+          }
           break;
         case 'mapError':
           console.error('Map error message received:', data.error);
@@ -81,15 +144,26 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
           setIsMapLoading(false);
           break;
         case 'mapClick':
-          console.log('Map click received:', data.lat, data.lng);
+          // if (__DEV__) {
+          //   console.log('Map click received:', data.lat, data.lng);
+          // }
           onMapClick?.(data.lat, data.lng);
           break;
         case 'layerToggle':
-          console.log('Layer toggle received:', data.layerName, data.visible);
+          // if (__DEV__) {
+          //   console.log('Layer toggle received:', data.layerName, data.visible);
+          // }
           onLayerToggle?.(data.layerName, data.visible);
           break;
+        case 'mapUpdated':
+          // if (__DEV__) {
+          //   console.log('Map updated to new location:', data.lat, data.lon);
+          // }
+          break;
         default:
-          console.log('Unknown message type:', data.type);
+          // if (__DEV__) {
+          //   console.log('Unknown message type:', data.type);
+          // }
       }
     } catch (error) {
       console.error('Error parsing WebView message:', error);
@@ -115,24 +189,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
     });
   }, []);
 
-  // Handle opacity change
-  const handleOpacityChange = useCallback((layerId: string, opacity: number) => {
-    setLocalLayers(prevLayers => {
-      const updatedLayers = prevLayers.map(layer => 
-        layer.id === layerId ? { ...layer, opacity } : layer
-      );
-      
-      // Update opacity in WebView
-      const updatedLayer = updatedLayers.find(layer => layer.id === layerId);
-      if (updatedLayer && webViewRef.current) {
-        webViewRef.current.injectJavaScript(`
-          window.updateLayerOpacity('${updatedLayer.name}', ${opacity});
-        `);
-      }
-      
-      return updatedLayers;
-    });
-  }, []);
 
   // Get visible legends
   const visibleLegends = useMemo(() => {
@@ -175,6 +231,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
     const mapZoom = zoom;
     const apiKeyValue = apiKey || 'demo';
     
+    
     // Generate layer URLs for visible layers
     const visibleLayers = localLayers.filter(layer => layer.visible);
     const layerUrls = visibleLayers.map(layer => {
@@ -202,7 +259,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
       return {
         name: layer.name,
         url,
-        opacity: layer.opacity,
+        opacity: 1.0,
         zIndex: layer.zIndex
       };
     });
@@ -224,8 +281,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
         <div id="map"></div>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script>
-          console.log('WebView JavaScript starting...');
-          
           if (window.ReactNativeWebView) {
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'webViewReady',
@@ -235,29 +290,24 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
           
           setTimeout(() => {
             try {
-              console.log('Creating map...');
               const map = L.map('map').setView([${centerLat}, ${centerLon}], ${mapZoom});
-              console.log('Map created successfully');
               
               // Add base map
               L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 19
               }).addTo(map);
-              console.log('Base map added');
               
               // Add weather layers
               const weatherLayers = {};
               ${layerUrls.map((layer, index) => `
-                console.log('Adding ${layer.name} layer...');
                 weatherLayers['${layer.name}'] = L.tileLayer('${layer.url}', {
                   attribution: '© OpenWeatherMap',
-                  opacity: ${layer.opacity},
+                  opacity: 1.0,
                   zIndex: ${layer.zIndex},
                   maxZoom: 18
                 });
                 weatherLayers['${layer.name}'].addTo(map);
-                console.log('${layer.name} layer added');
               `).join('')}
               
               // Add user location marker
@@ -283,15 +333,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
                 }
               });
               
-              // Global function for opacity changes
-              window.updateLayerOpacity = function(layerName, opacity) {
-                if (weatherLayers[layerName]) {
-                  weatherLayers[layerName].setOpacity(opacity);
-                  console.log('Opacity changed for', layerName, 'to', opacity);
-                } else {
-                  console.error('Layer not found for opacity update:', layerName);
-                }
-              };
               
               // Global function for layer toggle
               window.toggleLayer = function(layerName, visible) {
@@ -301,7 +342,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
                   } else {
                     weatherLayers[layerName].remove();
                   }
-                  console.log('Layer toggled:', layerName, visible);
                 } else {
                   console.error('Layer not found for toggle:', layerName);
                 }
@@ -313,8 +353,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
                   message: 'Map initialization complete'
                 }));
               }
-              
-              console.log('Map initialization complete');
             } catch (error) {
               console.error('Map initialization error:', error);
               if (window.ReactNativeWebView) {
@@ -407,7 +445,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
     layerButton: {
       position: 'absolute',
       top: -10, // Move above the Map title
-      right: 36, // Match the right margin of Map title
+      right: 0, // Position at the top right
       zIndex: 1000,
     },
     modalContainer: {
@@ -468,48 +506,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
     layerControls: {
       flexDirection: 'row',
       alignItems: 'center',
-    },
-    opacityContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginRight: 12,
-    },
-    opacitySlider: {
-      width: 80,
-      height: 4,
-      backgroundColor: theme.colors.outline,
-      borderRadius: 2,
-      marginHorizontal: 8,
-    },
-    opacityValue: {
-      fontSize: 12,
-      color: theme.colors.onSurface,
-      minWidth: 30,
-      textAlign: 'center',
-    },
-    opacityThumb: {
-      position: 'absolute',
-      top: -6,
-      width: 16,
-      height: 16,
-      backgroundColor: theme.colors.primary,
-      borderRadius: 8,
-      borderWidth: 2,
-      borderColor: theme.colors.surface,
-    },
-    infoButton: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: theme.colors.outline,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginLeft: 8,
-    },
-    infoButtonText: {
-      color: theme.colors.onSurface,
-      fontSize: 12,
-      fontWeight: 'bold',
     },
     toggleButton: {
       paddingHorizontal: 12,
@@ -574,26 +570,34 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
       ) : (
         <WebView
           ref={webViewRef}
-          key={mapKey}
+          key={`${mapKey}-${forceRefresh}`}
           source={{ html: mapHtml }}
           style={styles.webView}
           onMessage={handleWebViewMessage}
           onLoadStart={() => {
-            console.log('WebView load started');
+            // if (__DEV__) {
+            //   console.log('WebView load started');
+            // }
             setIsMapLoading(true);
           }}
           onLoadEnd={() => {
-            console.log('WebView load ended');
+            // if (__DEV__) {
+            //   console.log('WebView load ended');
+            // }
             setTimeout(() => {
               if (isMapLoading) {
-                console.log('WebView load timeout - stopping loading indicator');
+                // if (__DEV__) {
+                //   console.log('WebView load timeout - stopping loading indicator');
+                // }
                 setIsMapLoading(false);
               }
             }, 8000);
           }}
           onLoadProgress={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
-            console.log('WebView load progress:', nativeEvent.progress);
+            // if (__DEV__) {
+            //   console.log('WebView load progress:', nativeEvent.progress);
+            // }
           }}
           onError={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
@@ -721,18 +725,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
                     <Text style={styles.layerDescription}>{layer.description}</Text>
                   </View>
                   <View style={styles.layerControls}>
-                    <View style={styles.opacityContainer}>
-                      <Text style={styles.opacityValue}>{Math.round(layer.opacity * 100)}%</Text>
-                      <View style={styles.opacitySlider}>
-                        <TouchableOpacity
-                          style={[styles.opacityThumb, { left: `${layer.opacity * 100}%` }]}
-                          onPress={(e) => {
-                            const newOpacity = Math.max(0, Math.min(1, e.nativeEvent.locationX / 80));
-                            handleOpacityChange(layer.id, newOpacity);
-                          }}
-                        />
-                      </View>
-                    </View>
                     <TouchableOpacity
                       style={[
                         styles.toggleButton,
@@ -743,14 +735,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
                       <Text style={styles.toggleButtonText}>
                         {layer.visible ? 'ON' : 'OFF'}
                       </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.infoButton}
-                      onPress={() => {
-                        // Show layer info
-                      }}
-                    >
-                      <Text style={styles.infoButtonText}>?</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

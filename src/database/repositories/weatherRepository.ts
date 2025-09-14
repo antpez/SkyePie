@@ -21,16 +21,18 @@ export class WeatherRepository {
     }
     
     try {
+      const id = `${locationId}-${weatherType}`;
       await this.db.runAsync(
         `INSERT OR REPLACE INTO weather_cache 
-         (id, location_id, weather_type, data, expires_at) 
-         VALUES (?, ?, ?, ?, ?)`,
+         (id, location_id, weather_type, data, expires_at, created_at) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
-          `${locationId}-${weatherType}`,
+          id,
           locationId,
           weatherType,
           JSON.stringify(data),
           expiresAt.toISOString(),
+          new Date().toISOString(),
         ]
       );
     } catch (error) {

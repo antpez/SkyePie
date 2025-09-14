@@ -31,7 +31,9 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         await databaseConnection.initialize();
         
         setIsInitialized(true);
-        console.log('Database initialized successfully');
+        // if (__DEV__) {
+        //   console.log('Database initialized successfully');
+        // }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Database initialization failed';
         console.error('Database initialization failed:', err);

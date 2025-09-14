@@ -131,9 +131,18 @@ export class LocationRepository {
         created_at: string;
         updated_at: string;
       }>(
-        `SELECT * FROM locations WHERE user_id = ? AND is_favorite = 1 ORDER BY created_at DESC`,
+        `SELECT * FROM locations WHERE user_id = ? AND is_favorite = 1 ORDER BY 
+         CASE WHEN last_searched IS NULL THEN 1 ELSE 0 END, 
+         last_searched DESC, 
+         created_at DESC`,
         [userId]
       );
+
+      // console.log('Raw favorite locations from DB:', results.map(r => ({
+      //   name: r.name,
+      //   last_searched: r.last_searched,
+      //   created_at: r.created_at
+      // })));
 
       return results.map(this.mapRowToLocation);
     } catch (error) {
@@ -165,6 +174,7 @@ export class LocationRepository {
       if (updates.lastSearched !== undefined) {
         setClause.push('last_searched = ?');
         values.push(updates.lastSearched.toISOString());
+        // console.log('Updating lastSearched for location', id, 'to', updates.lastSearched.toISOString());
       }
 
       if (setClause.length === 0) return;
@@ -173,10 +183,13 @@ export class LocationRepository {
       values.push(new Date().toISOString());
       values.push(id);
 
-      await this.db.runAsync(
-        `UPDATE locations SET ${setClause.join(', ')} WHERE id = ?`,
-        values
-      );
+      const sql = `UPDATE locations SET ${setClause.join(', ')} WHERE id = ?`;
+      
+      // if (__DEV__) {
+      //   console.log('Updating location:', id, 'with fields:', Object.keys(updates));
+      // }
+
+      const result = await this.db.runAsync(sql, values);
     } catch (error) {
       console.error('Error updating location:', error);
       throw error;
@@ -194,6 +207,9 @@ export class LocationRepository {
 
   async searchLocations(query: string, limit: number = 10): Promise<Location[]> {
     try {
+      // Sanitize query to prevent potential issues
+      const sanitizedQuery = query.trim().replace(/[%_]/g, '\\$&');
+      
       const results = await this.db.getAllAsync<{
         id: string;
         user_id: string | null;
@@ -214,7 +230,7 @@ export class LocationRepository {
          WHERE name LIKE ? OR country LIKE ? OR state LIKE ?
          ORDER BY search_count DESC, created_at DESC
          LIMIT ?`,
-        [`%${query}%`, `%${query}%`, `%${query}%`, limit]
+        [`%${sanitizedQuery}%`, `%${sanitizedQuery}%`, `%${sanitizedQuery}%`, limit]
       );
 
       return results.map(this.mapRowToLocation);

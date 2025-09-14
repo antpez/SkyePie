@@ -116,6 +116,10 @@ export class SearchHistoryRepository {
   }
 
   async getRecentQueries(userId: string, limit: number = 5): Promise<string[]> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const results = await this.db.getAllAsync<{ query: string }>(
         `SELECT DISTINCT query FROM search_history 
@@ -133,6 +137,10 @@ export class SearchHistoryRepository {
   }
 
   async getSearchCount(userId: string): Promise<number> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const result = await this.db.getFirstAsync<{ count: number }>(
         `SELECT COUNT(*) as count FROM search_history WHERE user_id = ?`,

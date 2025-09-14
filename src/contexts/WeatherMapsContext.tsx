@@ -11,6 +11,7 @@ interface WeatherMapsContextType {
   toggleLayer: (layerId: string, visible: boolean) => Promise<void>;
   updateLayerOpacity: (layerId: string, opacity: number) => Promise<void>;
   resetToDefaults: () => Promise<void>;
+  clearCacheAndReset: () => Promise<void>;
   setSelectedLayer: (layerType: WeatherMapType | null) => void;
   selectedLayer: WeatherMapType | null;
 }
@@ -44,7 +45,17 @@ export function WeatherMapsProvider({ children }: WeatherMapsProviderProps) {
     try {
       const savedConfig = await storageService.getItem<WeatherMapConfig>('weather_maps_config');
       if (savedConfig) {
-        setConfig(savedConfig);
+        // Check if the saved config has old layer data with opacity sliders
+        // If any layer has opacity < 1.0, it's old data and we should use defaults
+        const hasOldOpacityData = savedConfig.layers?.some(layer => layer.opacity < 1.0);
+        
+        if (hasOldOpacityData) {
+          // console.log('Detected old layer data with opacity sliders, using new defaults');
+          await storageService.removeItem('weather_maps_config');
+          setConfig(DEFAULT_CONFIG);
+        } else {
+          setConfig(savedConfig);
+        }
       }
     } catch (error) {
       console.error('Error loading weather maps config:', error);
@@ -115,6 +126,17 @@ export function WeatherMapsProvider({ children }: WeatherMapsProviderProps) {
     setSelectedLayer(null);
   }, [saveConfig]);
 
+  // Clear cached data and use new defaults
+  const clearCacheAndReset = useCallback(async () => {
+    try {
+      await storageService.removeItem('weather_maps_config');
+      setConfig(DEFAULT_CONFIG);
+      setSelectedLayer(null);
+    } catch (error) {
+      console.error('Error clearing weather maps cache:', error);
+    }
+  }, []);
+
   // Load config on mount
   React.useEffect(() => {
     loadConfig();
@@ -129,6 +151,7 @@ export function WeatherMapsProvider({ children }: WeatherMapsProviderProps) {
     toggleLayer,
     updateLayerOpacity,
     resetToDefaults,
+    clearCacheAndReset,
     setSelectedLayer,
     selectedLayer,
   };

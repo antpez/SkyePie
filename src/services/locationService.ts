@@ -38,7 +38,9 @@ export class LocationService {
       
       // If permission is not granted, try to request it
       if (status !== 'granted') {
-        console.log('Location permission not granted, requesting permission...');
+        // if (__DEV__) {
+        //   console.log('Location permission not granted, requesting permission...');
+        // }
         const permissionResult = await this.requestLocationPermission();
         
         if (!permissionResult.granted) {
@@ -49,9 +51,10 @@ export class LocationService {
       }
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        timeInterval: 10000,
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 5000, // Reduced from 10000ms to 5000ms
         distanceInterval: 10,
+        maximumAge: 30000, // Use cached location if less than 30 seconds old
       });
 
       const coordinates: LocationCoordinates = {
@@ -81,7 +84,9 @@ export class LocationService {
       
       // If permission is not granted, try to request it
       if (status !== 'granted') {
-        console.log('Location permission not granted for watching, requesting permission...');
+        // if (__DEV__) {
+        //   console.log('Location permission not granted for watching, requesting permission...');
+        // }
         const permissionResult = await this.requestLocationPermission();
         
         if (!permissionResult.granted) {

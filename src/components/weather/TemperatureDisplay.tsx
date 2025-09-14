@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
@@ -16,7 +16,7 @@ interface TemperatureDisplayProps {
   timezone?: number; // Timezone offset in seconds
 }
 
-export const TemperatureDisplay: React.FC<TemperatureDisplayProps> = ({
+export const TemperatureDisplay: React.FC<TemperatureDisplayProps> = memo(({
   temperature,
   unit = 'celsius',
   size = 'large',
@@ -26,10 +26,10 @@ export const TemperatureDisplay: React.FC<TemperatureDisplayProps> = ({
   sunset,
   timezone = 0,
 }) => {
-  const { effectiveTheme, theme } = useThemeContext();
+  const { effectiveTheme } = useThemeContext();
 
-  // Get time-of-day based color
-  const getTimeOfDayColor = () => {
+  // Memoize time-of-day based color calculation
+  const temperatureColor = useMemo(() => {
     if (color) return color; // Use custom color if provided
     
     if (!sunrise || !sunset) {
@@ -57,7 +57,6 @@ export const TemperatureDisplay: React.FC<TemperatureDisplayProps> = ({
     const sunsetStart = sunsetHour - 1;   // 1 hour before sunset
     const sunsetEnd = sunsetHour + 0.5;   // 30 minutes after sunset
     
-    
     // Determine time of day
     if (currentHour >= sunriseStart && currentHour <= sunriseEnd) {
       return '#FFD700'; // Yellow for sunrise
@@ -69,9 +68,10 @@ export const TemperatureDisplay: React.FC<TemperatureDisplayProps> = ({
       // Night time - use black for light mode, white for dark mode
       return effectiveTheme === 'dark' ? '#FFFFFF' : '#000000';
     }
-  };
+  }, [color, sunrise, sunset, timezone, temperature, unit, effectiveTheme]);
 
-  const getSizeStyles = () => {
+  // Memoize size styles
+  const sizeStyles = useMemo(() => {
     switch (size) {
       case 'small':
         return { fontSize: 24, lineHeight: 28 };
@@ -84,18 +84,20 @@ export const TemperatureDisplay: React.FC<TemperatureDisplayProps> = ({
       default:
         return { fontSize: 48, lineHeight: 52 };
     }
-  };
+  }, [size]);
 
-  const temperatureText = formatTemperature(temperature, unit);
-  const displayText = showUnit ? temperatureText : temperatureText.replace(/[°CF]/, '');
-  const temperatureColor = getTimeOfDayColor();
+  // Memoize formatted text
+  const displayText = useMemo(() => {
+    const temperatureText = formatTemperature(temperature, unit);
+    return showUnit ? temperatureText : temperatureText.replace(/[°CF]/, '');
+  }, [temperature, unit, showUnit]);
 
   return (
     <View style={styles.container}>
       <Text
         style={[
           styles.temperature,
-          getSizeStyles(),
+          sizeStyles,
           { color: temperatureColor },
         ]}
       >
@@ -103,7 +105,9 @@ export const TemperatureDisplay: React.FC<TemperatureDisplayProps> = ({
       </Text>
     </View>
   );
-};
+});
+
+TemperatureDisplay.displayName = 'TemperatureDisplay';
 
 const styles = StyleSheet.create({
   container: {

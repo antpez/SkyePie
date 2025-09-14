@@ -1,12 +1,13 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import React, { useCallback, useMemo, useState, useEffect, memo } from 'react';
+import { View, StyleSheet, ScrollView, LayoutAnimation } from 'react-native';
 import { List, Switch, Text, Snackbar, Button } from 'react-native-paper';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { useDisplayPreferences } from '@/contexts/DisplayPreferencesContext';
 import { UniversalHeader } from '@/components/common';
 import { useUnits } from '@/contexts/UnitsContext';
+import { configureLayoutAnimation } from '@/utils/animations';
 
-export default function SettingsScreen() {
+const SettingsScreen = memo(() => {
   const { themeMode, setTheme, effectiveTheme, isLoading, theme } = useThemeContext();
   const { units, setTemperatureUnit, setWindSpeedUnit, setPressureUnit, setDistanceUnit } = useUnits();
   const { 
@@ -55,6 +56,7 @@ export default function SettingsScreen() {
   const handleThemeChange = useCallback(async (newTheme: 'light' | 'dark' | 'auto') => {
     if (!isLoading) {
       try {
+        configureLayoutAnimation();
         await setTheme(newTheme);
         setError(null);
         setSuccessMessage(`Theme changed to ${newTheme}`);
@@ -70,6 +72,7 @@ export default function SettingsScreen() {
   const handleTemperatureUnitChange = useCallback(async () => {
     try {
       const newUnit = units.temperature === 'celsius' ? 'fahrenheit' : 'celsius';
+      configureLayoutAnimation();
       await setTemperatureUnit(newUnit);
       setError(null);
       setSuccessMessage(`Temperature unit changed to ${newUnit}`);
@@ -503,7 +506,11 @@ export default function SettingsScreen() {
       </Snackbar>
     </View>
   );
-}
+});
+
+SettingsScreen.displayName = 'SettingsScreen';
+
+export default SettingsScreen;
 
 const styles = StyleSheet.create({
   container: {

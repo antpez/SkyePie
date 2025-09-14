@@ -40,16 +40,24 @@ export class OfflineCacheService {
       // Calculate expiration time
       const expiresAt = new Date(Date.now() + APP_CONFIG.cache.weatherTTL);
       
-      // Cache weather data
-      await weatherRepository.saveWeatherCache(
-        savedLocation.id,
-        'current',
-        weather,
-        expiresAt
-      );
+      // Cache weather data asynchronously to avoid transaction conflicts
+      this.cacheWeatherDataAsync(savedLocation.id, 'current', weather, expiresAt);
     } catch (error) {
       console.error('Error caching current weather:', error);
       throw error;
+    }
+  }
+
+  private async cacheWeatherDataAsync(
+    locationId: string,
+    weatherType: 'current' | 'forecast' | 'hourly',
+    data: any,
+    expiresAt: Date
+  ): Promise<void> {
+    try {
+      await weatherRepository.saveWeatherCache(locationId, weatherType, data, expiresAt);
+    } catch (error) {
+      console.error('Error caching weather data asynchronously:', error);
     }
   }
 
@@ -65,13 +73,8 @@ export class OfflineCacheService {
       // Calculate expiration time
       const expiresAt = new Date(Date.now() + APP_CONFIG.cache.forecastTTL);
       
-      // Cache forecast data
-      await weatherRepository.saveWeatherCache(
-        savedLocation.id,
-        'forecast',
-        forecast,
-        expiresAt
-      );
+      // Cache forecast data asynchronously to avoid transaction conflicts
+      this.cacheWeatherDataAsync(savedLocation.id, 'forecast', forecast, expiresAt);
     } catch (error) {
       console.error('Error caching weather forecast:', error);
       throw error;
@@ -335,7 +338,7 @@ export class OfflineCacheService {
   async clearAllCache(): Promise<void> {
     try {
       // This would need to be implemented in the repositories
-      console.log('Clearing all cache');
+      // console.log('Clearing all cache');
     } catch (error) {
       console.error('Error clearing all cache:', error);
       throw error;

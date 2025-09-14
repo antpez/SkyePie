@@ -23,6 +23,8 @@ function AppContent() {
 
   // Initialize performance optimizations and hide splash screen
   useEffect(() => {
+    let isMounted = true;
+    
     async function prepare() {
       try {
         // Skip image preloading for now due to require() issues
@@ -34,18 +36,29 @@ function AppContent() {
         performanceMonitor.startTiming('app_initialization');
         
         // Pre-load fonts, make any API calls you need to do here
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate loading time
+        // Removed artificial delay - app was taking 2 seconds longer than needed
+        
+        // Hide splash screen immediately to prevent refreshing
+        if (isMounted) {
+          await SplashScreen.hideAsync();
+          performanceMonitor.endTiming('app_initialization');
+        }
         
       } catch (e) {
         console.warn(e);
-      } finally {
-        // Tell the application to render
-        await SplashScreen.hideAsync();
-        performanceMonitor.endTiming('app_initialization');
+        // Ensure splash screen is hidden even on error
+        if (isMounted) {
+          await SplashScreen.hideAsync();
+          performanceMonitor.endTiming('app_initialization');
+        }
       }
     }
 
     prepare();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (

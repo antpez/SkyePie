@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Text, FAB, Snackbar, Button, SegmentedButtons } from 'react-native-paper';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts, WeatherIcon, TemperatureDisplay, WeatherMap } from '@/components';
@@ -17,12 +17,23 @@ import { selectSelectedLocation, selectCurrentLocation } from '@/store/selectors
 import { LocationCoordinates, Location } from '@/types';
 import { APP_CONFIG } from '@/config/app';
 import { offlineCacheService, userService, storageService } from '@/services';
+import { locationRepository } from '@/database/repositories/locationRepository';
 import { formatTemperature, formatWindSpeed, formatHumidity, formatPressure, formatVisibility, formatTime, formatDayOfWeek } from '@/utils/formatters';
 import { performanceMonitor } from '@/utils/performanceMonitor';
 import { errorLogger } from '@/utils/errorLogger';
 import '@/config/performance'; // Initialize performance monitoring
 
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const WeatherScreen = memo(() => {
+  // Animation values for smooth transitions
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  
   // Performance monitoring - only track render time, not every render
   const renderStartTime = useRef<number | null>(null);
   
@@ -39,6 +50,27 @@ const WeatherScreen = memo(() => {
     }
   });
 
+  // Animate in on mount
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   const { effectiveTheme, theme } = useThemeContext();
   const { units } = useUnits();
   const { preferences: displayPreferences } = useDisplayPreferences();
@@ -48,6 +80,13 @@ const WeatherScreen = memo(() => {
   const dispatch = useDispatch();
   const selectedLocation = useSelector(selectSelectedLocation);
   const reduxCurrentLocation = useSelector(selectCurrentLocation);
+  
+  // Debug selectedLocation state (reduced logging)
+  // useEffect(() => {
+  //   if (__DEV__ && selectedLocation) {
+  //     console.log('Selected location changed:', selectedLocation.name);
+  //   }
+  // }, [selectedLocation]);
   
   // Debug Redux state (commented out for production)
   // useEffect(() => {
@@ -81,6 +120,7 @@ const WeatherScreen = memo(() => {
     fetchForecast,
     fetchAlerts,
     refreshWeather,
+    fastLoadWeather,
     fastInitialize,
     clearNetworkError,
     refreshNetworkStatus
@@ -91,21 +131,46 @@ const WeatherScreen = memo(() => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [hasCachedData, setHasCachedData] = useState(false);
   const [showHourlyForecast, setShowHourlyForecast] = useState(true);
+  
+  // Animation for forecast toggle
+  const handleForecastToggle = useCallback((value: string) => {
+    const newShowHourly = value === 'hourly';
+    if (newShowHourly !== showHourlyForecast) {
+      // Add smooth layout animation
+      LayoutAnimation.configureNext({
+        duration: 300,
+        create: {
+          type: LayoutAnimation.Types.easeInEaseOut,
+          property: LayoutAnimation.Properties.opacity,
+        },
+        update: {
+          type: LayoutAnimation.Types.easeInEaseOut,
+        },
+      });
+      setShowHourlyForecast(newShowHourly);
+    }
+  }, [showHourlyForecast]);
   const [favoriteLocations, setFavoriteLocations] = useState<Location[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [favoriteWeatherData, setFavoriteWeatherData] = useState<Record<string, any>>({});
   const processedSearchParams = useRef<string>('');
   const fetchCurrentWeatherRef = useRef(fetchCurrentWeather);
   const lastFavoritesLoadTime = useRef<number>(0);
+  const [hasProcessedSearchParams, setHasProcessedSearchParams] = useState(false);
+  const [isLoadingWeather, setIsLoadingWeather] = useState(false);
+  const [isGettingCurrentLocation, setIsGettingCurrentLocation] = useState(false);
 
   // Update ref when fetchCurrentWeather changes
   useEffect(() => {
     fetchCurrentWeatherRef.current = fetchCurrentWeather;
-  }, []); // Remove dependency to prevent infinite loop
+  }, [fetchCurrentWeather]); // Add proper dependency
 
   // Memoized values for performance - optimized dependencies
   const locationToUse = useMemo(() => {
     if (selectedLocation) {
+      if (__DEV__) {
+        console.log('📍 Using selected location for weather and map:', selectedLocation.name, selectedLocation.latitude, selectedLocation.longitude);
+      }
       return {
         latitude: selectedLocation.latitude,
         longitude: selectedLocation.longitude,
@@ -113,10 +178,16 @@ const WeatherScreen = memo(() => {
     }
     // Use Redux current location if available, otherwise fall back to hook's current location
     if (reduxCurrentLocation) {
+      if (__DEV__) {
+        console.log('📍 Using Redux current location for weather and map:', reduxCurrentLocation.name, reduxCurrentLocation.latitude, reduxCurrentLocation.longitude);
+      }
       return {
         latitude: reduxCurrentLocation.latitude,
         longitude: reduxCurrentLocation.longitude,
       };
+    }
+    if (__DEV__) {
+      console.log('📍 Using hook current location for weather and map:', currentLocation?.latitude, currentLocation?.longitude);
     }
     return currentLocation;
   }, [selectedLocation, reduxCurrentLocation, currentLocation]);
@@ -132,6 +203,10 @@ const WeatherScreen = memo(() => {
   // Memoized weather data processing
   const processedWeatherData = useMemo(() => {
     if (!currentWeather) return null;
+    
+    if (__DEV__) {
+      console.log('Processing weather data for location:', currentWeather.name, 'Coordinates from weather API response:', currentWeather.coord?.lat, currentWeather.coord?.lon);
+    }
     
     return {
       name: currentWeather.name,
@@ -209,7 +284,16 @@ const WeatherScreen = memo(() => {
   }), [theme.colors]);
 
   const loadWeatherData = useCallback(async (location: LocationCoordinates) => {
+    // Prevent multiple simultaneous weather calls
+    if (isLoadingWeather) {
+      if (__DEV__) {
+        console.log('⏳ Weather already loading, skipping duplicate call');
+      }
+      return;
+    }
+    
     const startTime = performance.now();
+    setIsLoadingWeather(true);
     
     try {
       // Validate location coordinates
@@ -221,12 +305,26 @@ const WeatherScreen = memo(() => {
         throw new Error('Location coordinates are out of valid range');
       }
       
+      // Ensure we're using the most recent locationToUse if available
+      const coordinatesToUse = locationToUse && 
+        Math.abs(locationToUse.latitude - location.latitude) < 0.001 && 
+        Math.abs(locationToUse.longitude - location.longitude) < 0.001 
+        ? locationToUse 
+        : location;
+      
+      if (__DEV__) {
+        console.log('🌤️ Loading weather data for coordinates:', location.latitude, location.longitude);
+        console.log('📍 Current selected location:', selectedLocation?.name || 'undefined', selectedLocation?.latitude || 'undefined', selectedLocation?.longitude || 'undefined');
+        console.log('📍 LocationToUse:', locationToUse?.latitude, locationToUse?.longitude);
+        console.trace('🔍 loadWeatherData call stack');
+      }
+      
       // Use Promise.allSettled to prevent one failure from stopping others
       const results = await Promise.allSettled([
-        fetchCurrentWeather(location.latitude, location.longitude),
-        fetchForecast(location.latitude, location.longitude),
+        fetchCurrentWeather(coordinatesToUse.latitude, coordinatesToUse.longitude),
+        fetchForecast(coordinatesToUse.latitude, coordinatesToUse.longitude),
         // Temporarily disable alerts to prevent infinite loop
-        // fetchAlerts(location.latitude, location.longitude),
+        // fetchAlerts(coordinatesToUse.latitude, coordinatesToUse.longitude),
       ]);
       
       // Log any failures but don't throw
@@ -236,7 +334,7 @@ const WeatherScreen = memo(() => {
           errorLogger.warn(`Failed to load ${operation}`, 'WeatherScreen', {
             operation,
             error: result.reason,
-            location: { latitude: location.latitude, longitude: location.longitude }
+            location: { latitude: coordinatesToUse.latitude, longitude: coordinatesToUse.longitude }
           });
           
           // Set error state for critical failures
@@ -254,31 +352,83 @@ const WeatherScreen = memo(() => {
       setError(errorMessage);
       setSnackbarVisible(true);
     } finally {
+      setIsLoadingWeather(false);
       // Only log if it took longer than 100ms
       const duration = performance.now() - startTime;
-      if (__DEV__ && duration > 100) {
-        errorLogger.info(`Weather data loading took ${duration.toFixed(2)}ms`, 'WeatherScreen', {
-          duration,
-          location: { latitude: location.latitude, longitude: location.longitude }
-        });
-      }
+      // if (__DEV__ && duration > 100) {
+      //   errorLogger.info(`Weather data loading took ${duration.toFixed(2)}ms`, 'WeatherScreen', {
+      //     duration,
+      //     location: { latitude: location.latitude, longitude: location.longitude }
+      //   });
+      // }
     }
-  }, [fetchCurrentWeather, fetchForecast, currentWeather]); // Add stable dependencies
+  }, [fetchCurrentWeather, fetchForecast, currentWeather, isLoadingWeather]); // Add stable dependencies
 
 
   const handleRefresh = useCallback(async () => {
-    if (!locationToUse) return;
-    
     setRefreshing(true);
+    setIsGettingCurrentLocation(true);
     try {
-      await refreshWeather(locationToUse.latitude, locationToUse.longitude);
+      if (__DEV__) {
+        console.log('🔄 Refresh triggered - getting current location');
+      }
+      
+      // Get current location first
+      const currentLocation = await getCurrentLocation();
+      
+      if (currentLocation) {
+        if (__DEV__) {
+          console.log('📍 Current location obtained during refresh:', currentLocation.latitude, currentLocation.longitude);
+        }
+        
+        // Create a Location object for Redux
+        const locationObj: Location = {
+          id: `current-${currentLocation.latitude}-${currentLocation.longitude}`,
+          name: 'Current Location',
+          country: '',
+          state: '',
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          isCurrent: true,
+          isFavorite: false,
+          searchCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        
+        // Update Redux state
+        dispatch(setCurrentLocation(locationObj));
+        dispatch(setSelectedLocation(locationObj));
+        
+        // Refresh weather data with current location
+        await refreshWeather(currentLocation.latitude, currentLocation.longitude);
+        
+        if (__DEV__) {
+          console.log('✅ Refresh completed with current location');
+        }
+      } else {
+        // Fallback to existing location if current location fails
+        if (locationToUse) {
+          if (__DEV__) {
+            console.log('⚠️ Current location failed, refreshing with existing location');
+          }
+          await refreshWeather(locationToUse.latitude, locationToUse.longitude);
+        } else {
+          if (__DEV__) {
+            console.log('❌ No location available for refresh');
+          }
+          setError('Unable to get your current location. Please check location permissions.');
+          setSnackbarVisible(true);
+        }
+      }
     } catch (err) {
       console.error('Error refreshing weather:', err);
       setSnackbarVisible(true);
     } finally {
       setRefreshing(false);
+      setIsGettingCurrentLocation(false);
     }
-  }, [locationToUse, refreshWeather]);
+  }, [getCurrentLocation, refreshWeather, dispatch, locationToUse]);
 
   const handleLocationPress = useCallback(async () => {
     try {
@@ -310,7 +460,12 @@ const WeatherScreen = memo(() => {
       };
       
       dispatch(setCurrentLocation(locationObj));
-      dispatch(setSelectedLocation(null)); // Clear selected location
+      dispatch(setSelectedLocation(locationObj)); // Also set as selected location so map updates
+      
+      if (__DEV__) {
+        console.log('📍 Current location button pressed - updating both weather and map:', location.latitude, location.longitude);
+      }
+      
       await loadWeatherData(location);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get current location';
@@ -333,6 +488,9 @@ const WeatherScreen = memo(() => {
       setFavoritesLoading(true);
       const user = await userService.getCurrentUser();
       const favorites = await offlineCacheService.getFavoriteLocations(user.id);
+      // if (__DEV__) {
+      //   console.log('Loaded favorites:', favorites.map(f => f.name).join(', '));
+      // }
       setFavoriteLocations(favorites);
       
       if (favorites.length === 0) {
@@ -381,15 +539,61 @@ const WeatherScreen = memo(() => {
     }
   }, [dbInitialized]);
 
+  // Helper function to convert string dates back to Date objects
+  const convertLocationDates = useCallback((location: Location): Location => {
+    const converted = { ...location };
+    if (converted.lastSearched && typeof converted.lastSearched === 'string') {
+      converted.lastSearched = new Date(converted.lastSearched);
+    }
+    if (converted.createdAt && typeof converted.createdAt === 'string') {
+      converted.createdAt = new Date(converted.createdAt);
+    }
+    if (converted.updatedAt && typeof converted.updatedAt === 'string') {
+      converted.updatedAt = new Date(converted.updatedAt);
+    }
+    return converted;
+  }, []);
+
+  // Helper function to update last searched time for a location
+  const updateLastSearched = useCallback(async (location: Location) => {
+    try {
+      // Check if database is ready before attempting to update
+      if (!dbInitialized) {
+        if (__DEV__) {
+          console.log('Database not ready, skipping location update for:', location.name);
+        }
+        return;
+      }
+      
+      if (location.id && !location.id.startsWith('current-') && !location.id.startsWith('search-')) {
+        // Only update for saved locations (not current location or search results)
+        if (__DEV__) {
+          console.log('Updating lastSearched for:', location.name);
+        }
+        await locationRepository.updateLocation(location.id, {
+          lastSearched: new Date(),
+        });
+      }
+    } catch (error) {
+      console.error('Error updating last searched time:', error);
+    }
+  }, [dbInitialized]);
+
   // Handle favorite location selection
-  const handleFavoriteLocationSelect = useCallback((location: Location) => {
+  const handleFavoriteLocationSelect = useCallback(async (location: Location) => {
+    // if (__DEV__) {
+    //   console.log('Favorite location selected:', location.name);
+    // }
     dispatch(setSelectedLocation(location));
+    await updateLastSearched(location);
+    // Reload favorites to update the order
+    await loadFavoriteLocations();
     const locationCoords: LocationCoordinates = {
       latitude: location.latitude,
       longitude: location.longitude,
     };
     loadWeatherData(locationCoords);
-  }, [loadWeatherData, dispatch]);
+  }, [loadWeatherData, dispatch, updateLastSearched, loadFavoriteLocations]);
 
   // Handle remove favorite
   const handleRemoveFavorite = useCallback(async (locationId: string) => {
@@ -410,62 +614,109 @@ const WeatherScreen = memo(() => {
       
       try {
         // Don't wait for database - let it initialize in background
-        // Only wait if database is actually initializing
-        if (dbInitializing) {
-          // Wait for database to be ready, but with a reasonable timeout
-          const maxWaitTime = 2000; // 2 seconds max
-          const checkInterval = 100; // Check every 100ms
-          let waited = 0;
-          
-          while (dbInitializing && waited < maxWaitTime) {
-            await new Promise(resolve => setTimeout(resolve, checkInterval));
-            waited += checkInterval;
-          }
-        }
+        // Skip database wait entirely to prevent hanging
+        // if (dbInitializing) {
+        //   // Wait for database to be ready, but with a shorter timeout
+        //   const maxWaitTime = 500; // 500ms max (reduced from 2000ms)
+        //   const checkInterval = 50; // Check every 50ms (reduced from 100ms)
+        //   let waited = 0;
+        //   
+        //   while (dbInitializing && waited < maxWaitTime) {
+        //     await new Promise(resolve => setTimeout(resolve, checkInterval));
+        //     waited += checkInterval;
+        //   }
+        // }
         
         setIsInitializing(false);
         
-        // Try current location first
-        try {
-          const location = await getCurrentLocation();
-          if (location) {
-            // Create a Location object for Redux
-            const locationObj: Location = {
-              id: `current-${location.latitude}-${location.longitude}`,
-              name: 'Current Location',
-              country: '',
+        // Check if we already have a selected location from storage
+        const savedSelectedLocation = await storageService.getSelectedLocation();
+        
+        if (savedSelectedLocation) {
+          // Convert string dates back to Date objects if needed
+          const convertedLocation = convertLocationDates(savedSelectedLocation);
+          
+          // We have a saved location, use it instead of getting current location
+          dispatch(setSelectedLocation(convertedLocation));
+          await updateLastSearched(convertedLocation);
+          const hasCached = await fastInitialize(convertedLocation.latitude, convertedLocation.longitude);
+          setHasCachedData(hasCached);
+          await loadWeatherData({
+            latitude: convertedLocation.latitude,
+            longitude: convertedLocation.longitude,
+          });
+        } else {
+          // No saved location, try current location first with timeout
+          try {
+            console.log('No saved location found, attempting to get current location...');
+            // Add timeout to prevent hanging
+            const locationPromise = getCurrentLocation();
+            const timeoutPromise = new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Location timeout')), 5000)
+            );
+            
+            const location = await Promise.race([locationPromise, timeoutPromise]);
+            console.log('Current location obtained:', location);
+            
+            if (location) {
+              // Create a Location object for Redux
+              const locationObj: Location = {
+                id: `current-${location.latitude}-${location.longitude}`,
+                name: 'Current Location',
+                country: '',
+                state: '',
+                latitude: location.latitude,
+                longitude: location.longitude,
+                isCurrent: true,
+                isFavorite: false,
+                searchCount: 0,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+              
+              dispatch(setCurrentLocation(locationObj));
+              dispatch(setSelectedLocation(locationObj)); // Also set as selected location
+              
+              // Try fast initialization first (load cached data immediately)
+              const hasCached = await fastInitialize(location.latitude, location.longitude);
+              setHasCachedData(hasCached);
+              
+              // Then load fresh data in background
+              await loadWeatherData(location);
+            }
+          } catch (err) {
+            console.warn('Location failed, using fallback:', err);
+            // Use a fallback location (London) for testing
+            const fallbackLocation: LocationCoordinates = {
+              latitude: 51.5074,
+              longitude: -0.1278,
+            };
+            
+            // Create fallback location object for Redux
+            const fallbackLocationObj: Location = {
+              id: `fallback-${fallbackLocation.latitude}-${fallbackLocation.longitude}`,
+              name: 'London (Fallback)',
+              country: 'GB',
               state: '',
-              latitude: location.latitude,
-              longitude: location.longitude,
-              isCurrent: true,
+              latitude: fallbackLocation.latitude,
+              longitude: fallbackLocation.longitude,
+              isCurrent: false,
               isFavorite: false,
               searchCount: 0,
               createdAt: new Date(),
               updatedAt: new Date(),
             };
             
-            dispatch(setCurrentLocation(locationObj));
+            dispatch(setCurrentLocation(fallbackLocationObj));
+            dispatch(setSelectedLocation(fallbackLocationObj));
             
-            // Try fast initialization first (load cached data immediately)
-            const hasCached = await fastInitialize(location.latitude, location.longitude);
+            // Try fast initialization with fallback location
+            const hasCached = await fastInitialize(fallbackLocation.latitude, fallbackLocation.longitude);
             setHasCachedData(hasCached);
             
-            // Then load fresh data in background
-            await loadWeatherData(location);
+            // Then load fresh data
+            await loadWeatherData(fallbackLocation);
           }
-        } catch (err) {
-          // Use a fallback location (London) for testing
-          const fallbackLocation: LocationCoordinates = {
-            latitude: 51.5074,
-            longitude: -0.1278,
-          };
-          
-          // Try fast initialization with fallback location
-          const hasCached = await fastInitialize(fallbackLocation.latitude, fallbackLocation.longitude);
-          setHasCachedData(hasCached);
-          
-          // Then load fresh data
-          await loadWeatherData(fallbackLocation);
         }
       } finally {
         // Only log if it took longer than 100ms
@@ -518,8 +769,12 @@ const WeatherScreen = memo(() => {
             
             dispatch(setSelectedLocation(locationObj));
             
-            // Force refresh by using refreshWeather which clears and reloads data
-            await refreshWeather(location.latitude, location.longitude);
+            // Use fastLoadWeather for immediate display with background refresh
+            if (__DEV__) {
+              console.log('🚀 fastLoadWeather called with coordinates:', location.latitude, location.longitude);
+              console.trace('🔍 fastLoadWeather call stack');
+            }
+            await fastLoadWeather(location.latitude, location.longitude);
           }
         } catch (err) {
           console.error('Error loading search location:', err);
@@ -541,12 +796,16 @@ const WeatherScreen = memo(() => {
     const saveSelectedLocation = async () => {
       if (selectedLocation) {
         try {
+          // if (__DEV__) {
+          //   console.log('Saving location to storage:', selectedLocation.name);
+          // }
           await storageService.saveSelectedLocation(selectedLocation);
-          errorLogger.info('Selected location saved successfully', 'WeatherScreen', {
-            locationId: selectedLocation.id,
-            locationName: selectedLocation.name
-          });
+          // errorLogger.info('Selected location saved successfully', 'WeatherScreen', {
+          //   locationId: selectedLocation.id,
+          //   locationName: selectedLocation.name
+          // });
         } catch (err) {
+          console.error('Failed to save selected location to storage:', err);
           errorLogger.error('Failed to save selected location', err as Error, 'WeatherScreen', {
             locationId: selectedLocation.id,
             locationName: selectedLocation.name
@@ -566,39 +825,192 @@ const WeatherScreen = memo(() => {
           const now = Date.now();
           // Only reload if it's been more than 2 seconds since last load
           if (now - lastFavoritesLoadTime.current > 2000) {
+            // if (__DEV__) {
+            //   console.log('Reloading favorites on focus');
+            // }
             loadFavoriteLocations();
             lastFavoritesLoadTime.current = now;
           }
         }
         
-        // Restore selected location if we don't have one in Redux but have one in storage
-        if (!selectedLocation) {
-          try {
-            const savedSelectedLocation = await storageService.getSelectedLocation();
-            if (savedSelectedLocation) {
-              dispatch(setSelectedLocation(savedSelectedLocation));
-              // Load weather for the saved location
-              const hasCached = await fastInitialize(savedSelectedLocation.latitude, savedSelectedLocation.longitude);
-              setHasCachedData(hasCached);
-              await loadWeatherData({
-                latitude: savedSelectedLocation.latitude,
-                longitude: savedSelectedLocation.longitude,
-              });
-              errorLogger.info('Selected location restored from storage', 'WeatherScreen', {
-                locationId: savedSelectedLocation.id,
-                locationName: savedSelectedLocation.name
-              });
-            }
-          } catch (err) {
-            errorLogger.error('Failed to restore selected location on focus', err as Error, 'WeatherScreen', {
-              action: 'restoreLocationOnFocus'
-            });
+        // Check if we have search parameters first (from navigation)
+        if (__DEV__) {
+          console.log('🔍 Checking search params:', { hasSearchParams, hasProcessedSearchParams, searchParams });
+        }
+        if (hasSearchParams && !hasProcessedSearchParams) {
+          if (__DEV__) {
+            console.log('🔍 Processing search parameters:', searchParams);
+            console.log('📍 Current selected location:', selectedLocation?.name, selectedLocation?.latitude, selectedLocation?.longitude);
+            console.log('🚫 Has processed search params:', hasProcessedSearchParams);
           }
+          const lat = parseFloat(searchParams.latitude as string);
+          const lon = parseFloat(searchParams.longitude as string);
+          
+          if (!isNaN(lat) && !isNaN(lon)) {
+            // Check if these coordinates are significantly different from current selected location
+            const isSignificantlyDifferent = !selectedLocation || 
+              Math.abs(selectedLocation.latitude - lat) > 0.1 || 
+              Math.abs(selectedLocation.longitude - lon) > 0.1;
+            
+            if (isSignificantlyDifferent) {
+              if (__DEV__) {
+                console.log('Search parameters differ significantly from selected location, updating...');
+              }
+            const locationObj: Location = {
+              id: `search-${lat}-${lon}`,
+              name: searchParams.name as string || 'Unknown Location',
+              country: searchParams.country as string || '',
+              state: searchParams.state as string || '',
+              latitude: lat,
+              longitude: lon,
+              isCurrent: false,
+              isFavorite: false,
+              searchCount: 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            
+            // if (__DEV__) {
+            //   console.log('Loading location from search:', locationObj.name);
+            // }
+            dispatch(setSelectedLocation(locationObj));
+            await updateLastSearched(locationObj);
+            
+            // Load weather for the search location
+            const hasCached = await fastInitialize(lat, lon);
+            setHasCachedData(hasCached);
+            await loadWeatherData({ latitude: lat, longitude: lon });
+            
+            // errorLogger.info('Location restored from search parameters on focus', 'WeatherScreen', {
+            //   locationId: locationObj.id,
+            //   locationName: locationObj.name
+            // });
+            
+            // Mark search parameters as processed to prevent them from being processed again
+            setHasProcessedSearchParams(true);
+            if (__DEV__) {
+              console.log('Search parameters processed and marked as complete');
+            }
+            
+            return; // Exit early since we processed search params
+            } else {
+              if (__DEV__) {
+                console.log('Search parameters are similar to selected location, ignoring...');
+              }
+              setHasProcessedSearchParams(true);
+              return; // Exit early since we're ignoring similar coordinates
+            }
+          }
+        }
+        
+        // If no search params, try to restore from storage
+        try {
+          const savedSelectedLocation = await storageService.getSelectedLocation();
+          if (savedSelectedLocation) {
+            // if (__DEV__) {
+            //   console.log('Restoring saved location:', savedSelectedLocation.name);
+            // }
+            
+            // Convert string dates back to Date objects if needed
+            const convertedLocation = convertLocationDates(savedSelectedLocation);
+            
+            dispatch(setSelectedLocation(convertedLocation));
+            await updateLastSearched(convertedLocation);
+            
+            // Use fastLoadWeather for immediate display with background refresh
+            if (__DEV__) {
+              console.log('🚀 fastLoadWeather (storage) called with coordinates:', convertedLocation.latitude, convertedLocation.longitude);
+              console.trace('🔍 fastLoadWeather call stack');
+            }
+            await fastLoadWeather(convertedLocation.latitude, convertedLocation.longitude);
+            // errorLogger.info('Selected location restored from storage on focus', 'WeatherScreen', {
+            //   locationId: convertedLocation.id,
+            //   locationName: convertedLocation.name
+            // });
+          } else {
+            // if (__DEV__) {
+            //   console.log('No saved location, loading current location...');
+            // }
+            // Fallback to current location if no saved location
+            try {
+              const location = await getCurrentLocation();
+              if (location) {
+                const locationObj: Location = {
+                  id: `current-${location.latitude}-${location.longitude}`,
+                  name: 'Current Location',
+                  country: '',
+                  state: '',
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  isCurrent: true,
+                  isFavorite: false,
+                  searchCount: 0,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                };
+                
+                // if (__DEV__) {
+                //   console.log('Loading current location:', locationObj.name);
+                // }
+                dispatch(setCurrentLocation(locationObj));
+                dispatch(setSelectedLocation(locationObj));
+                
+                // Use fastLoadWeather for immediate display with background refresh
+                if (__DEV__) {
+                  console.log('🚀 fastLoadWeather (current) called with coordinates:', location.latitude, location.longitude);
+                  console.trace('🔍 fastLoadWeather call stack');
+                }
+                await fastLoadWeather(location.latitude, location.longitude);
+                
+                // errorLogger.info('Current location loaded as fallback on focus', 'WeatherScreen', {
+                //   locationId: locationObj.id,
+                //   locationName: locationObj.name
+                // });
+              } else {
+                // If no current location, use fallback
+                const fallbackLocation: LocationCoordinates = {
+                  latitude: 51.5074,
+                  longitude: -0.1278,
+                };
+                
+                const fallbackLocationObj: Location = {
+                  id: `fallback-${fallbackLocation.latitude}-${fallbackLocation.longitude}`,
+                  name: 'London (Fallback)',
+                  country: 'GB',
+                  state: '',
+                  latitude: fallbackLocation.latitude,
+                  longitude: fallbackLocation.longitude,
+                  isCurrent: false,
+                  isFavorite: false,
+                  searchCount: 0,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                };
+                
+                dispatch(setCurrentLocation(fallbackLocationObj));
+                dispatch(setSelectedLocation(fallbackLocationObj));
+                
+                // Use fastLoadWeather for immediate display with background refresh
+                if (__DEV__) {
+                  console.log('🚀 fastLoadWeather (fallback) called with coordinates:', fallbackLocation.latitude, fallbackLocation.longitude);
+                  console.trace('🔍 fastLoadWeather call stack');
+                }
+                await fastLoadWeather(fallbackLocation.latitude, fallbackLocation.longitude);
+              }
+            } catch (err) {
+              console.error('Error loading current location as fallback:', err);
+            }
+          }
+        } catch (err) {
+          console.error('Error retrieving saved location from storage:', err);
+          errorLogger.error('Failed to restore selected location on focus', err as Error, 'WeatherScreen', {
+            action: 'restoreLocationOnFocus'
+          });
         }
       };
       
       restoreLocationAndLoadFavorites();
-    }, [dbInitialized, selectedLocation, dispatch, fastInitialize, loadWeatherData, loadFavoriteLocations]) // Optimized dependencies
+    }, [dbInitialized, hasSearchParams, searchParams.latitude, searchParams.longitude]) // Minimal dependencies to prevent infinite loop
   );
 
 
@@ -769,7 +1181,7 @@ const WeatherScreen = memo(() => {
             colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}
             progressBackgroundColor={theme.colors.surface}
-            title="Pull to refresh"
+            title={isGettingCurrentLocation ? "Getting your current location..." : refreshing ? "Refreshing weather..." : "Pull to refresh"}
             titleColor={theme.colors.onSurface}
             progressViewOffset={80}
           />
@@ -780,7 +1192,18 @@ const WeatherScreen = memo(() => {
       >
         {/* Main weather display - no card container */}
         {processedWeatherData && (
-          <View style={styles.weatherDisplayContainer}>
+          <Animated.View 
+            style={[
+              styles.weatherDisplayContainer,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { translateY: slideAnim },
+                  { scale: scaleAnim }
+                ]
+              }
+            ]}
+          >
             {/* Weather header - no background */}
             <View style={styles.weatherHeader}>
               <View style={styles.locationInfo}>
@@ -878,7 +1301,7 @@ const WeatherScreen = memo(() => {
                 </View>
               </View>
             </View>
-          </View>
+          </Animated.View>
         )}
 
         {/* Weather alerts - no card container */}
@@ -938,7 +1361,7 @@ const WeatherScreen = memo(() => {
                   <View style={styles.forecastToggleContainer}>
                   <SegmentedButtons
                     value={showHourlyForecast ? 'hourly' : 'daily'}
-                    onValueChange={(value) => setShowHourlyForecast(value === 'hourly')}
+                    onValueChange={handleForecastToggle}
                     buttons={[
                       {
                         value: 'hourly',
@@ -999,7 +1422,7 @@ const WeatherScreen = memo(() => {
                   <View style={styles.forecastToggleContainer}>
                   <SegmentedButtons
                     value={showHourlyForecast ? 'hourly' : 'daily'}
-                    onValueChange={(value) => setShowHourlyForecast(value === 'hourly')}
+                    onValueChange={handleForecastToggle}
                     buttons={[
                       {
                         value: 'hourly',
@@ -1080,6 +1503,7 @@ const WeatherScreen = memo(() => {
         {locationToUse && isApiKeyConfigured && (
           <View style={styles.weatherMapContainer}>
             <WeatherMap
+              key={`weather-map-${locationToUse.latitude}-${locationToUse.longitude}`}
               center={{
                 lat: locationToUse.latitude,
                 lon: locationToUse.longitude,
@@ -1107,13 +1531,14 @@ const WeatherScreen = memo(() => {
                   >
                     <View style={styles.favoriteContent}>
                       <View style={styles.favoriteInfo}>
-                        <Text 
-                          variant="titleMedium" 
-                          style={[styles.favoriteName, { color: theme.colors.onSurface }]}
-                          onPress={() => handleFavoriteLocationSelect(location)}
-                        >
-                          {location.name}
-                        </Text>
+                        <TouchableOpacity onPress={() => handleFavoriteLocationSelect(location)}>
+                          <Text 
+                            variant="titleMedium" 
+                            style={[styles.favoriteName, { color: theme.colors.onSurface }]}
+                          >
+                            {location.name}
+                          </Text>
+                        </TouchableOpacity>
                         <Text 
                           variant="bodyMedium" 
                           style={[styles.favoriteDetails, { color: theme.colors.onSurfaceVariant }]}

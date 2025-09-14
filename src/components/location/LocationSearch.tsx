@@ -1,9 +1,10 @@
-import React, { useState, useCallback, memo } from 'react';
-import { View, StyleSheet, FlatList, ScrollView, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import React, { useState, useCallback, memo, useMemo } from 'react';
+import { View, StyleSheet, FlatList, ScrollView, Keyboard, TouchableWithoutFeedback, LayoutAnimation } from 'react-native';
 import { Searchbar, Text, List, IconButton } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { LocationSearchResult, SearchHistoryItem } from '../../types';
 import { debounce } from '../../utils/helpers';
+import { configureLayoutAnimation } from '../../utils/animations';
 
 interface LocationSearchProps {
   onLocationSelect: (location: LocationSearchResult) => void;
@@ -37,6 +38,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
   const debouncedSearch = useCallback(
     debounce(async (searchQuery: string) => {
       if (searchQuery.length < 1) {
+        configureLayoutAnimation();
         setResults([]);
         setShowHistory(true);
         return;
@@ -45,15 +47,17 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
       setIsSearching(true);
       try {
         const searchResults = await onSearch(searchQuery);
+        configureLayoutAnimation();
         setResults(searchResults);
         setShowHistory(false);
       } catch (error) {
         console.error('Search error:', error);
+        configureLayoutAnimation();
         setResults([]);
       } finally {
         setIsSearching(false);
       }
-    }, 200), // Reduced debounce delay for faster search
+    }, 300), // Optimized debounce delay
     [onSearch]
   );
 

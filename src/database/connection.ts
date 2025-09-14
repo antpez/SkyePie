@@ -38,9 +38,22 @@ class DatabaseConnection {
     return performanceMonitor.measureAsync('DatabaseConnection.initialize', async () => {
       try {
         this.db = await SQLite.openDatabaseAsync('skyepie.db');
-        await this.createTables();
+        
+        // Validate database connection
+        if (!this.db) {
+          throw new Error('Failed to open database connection');
+        }
+        
+        // Test database connection
+        await this.db.execAsync('SELECT 1');
+        
+            await this.createTables();
+            // if (__DEV__) {
+            //   console.log('Database initialized successfully');
+            // }
       } catch (error) {
         console.error('Error initializing database:', error);
+        this.db = null;
         throw error;
       }
     });
@@ -176,6 +189,16 @@ class DatabaseConnection {
     await this.db.execAsync(`
       CREATE INDEX IF NOT EXISTS idx_search_history_user 
       ON search_history(user_id);
+    `);
+
+    await this.db.execAsync(`
+      CREATE INDEX IF NOT EXISTS idx_locations_last_searched 
+      ON locations(last_searched) WHERE last_searched IS NOT NULL;
+    `);
+
+    await this.db.execAsync(`
+      CREATE INDEX IF NOT EXISTS idx_locations_coordinates 
+      ON locations(latitude, longitude);
     `);
   }
 

@@ -27,10 +27,18 @@ export const useOfflineWeather = (apiKey?: string) => {
   // Network status monitoring
   const { isOnline, isSlowConnection, refreshNetworkStatus } = useNetworkStatus();
 
-  // Sync offline state with network status
+  // Sync offline state with network status - only set offline if we're actually offline
   useEffect(() => {
-    setIsOffline(!isOnline);
-  }, [isOnline]);
+    // Only set offline if we're actually offline, not just during data refresh
+    if (!isOnline) {
+      setIsOffline(true);
+    } else {
+      // Only set online if we're not currently loading fresh data
+      if (!isLoading) {
+        setIsOffline(false);
+      }
+    }
+  }, [isOnline, isLoading]);
 
   // Memoize weather service creation to prevent recreation
   const weatherService = useMemo(() => {
@@ -83,7 +91,7 @@ export const useOfflineWeather = (apiKey?: string) => {
     lastSearched: new Date(),
   }), []);
 
-  // Initialize user - optimized with better error handling
+  // Initialize user - optimized with better error handling and memory leak prevention
   useEffect(() => {
     let isMounted = true;
     let retryTimeout: NodeJS.Timeout | null = null;
@@ -121,9 +129,10 @@ export const useOfflineWeather = (apiKey?: string) => {
       isMounted = false;
       if (retryTimeout) {
         clearTimeout(retryTimeout);
+        retryTimeout = null;
       }
     };
-  }, []);
+  }, []); // Empty dependency array to prevent re-initialization
 
   const fetchCurrentWeather = useCallback(async (
     latitude: number, 
@@ -148,7 +157,10 @@ export const useOfflineWeather = (apiKey?: string) => {
           if (cachedWeather) {
             setCurrentWeather(cachedWeather);
             setLastUpdated(new Date());
-            setIsOffline(!isOnline);
+            // Only set offline if we're actually offline, not just using cached data
+            if (!isOnline) {
+              setIsOffline(true);
+            }
             // Continue to fetch fresh data in background
           }
         } catch (cacheError) {
@@ -173,7 +185,10 @@ export const useOfflineWeather = (apiKey?: string) => {
 
       setCurrentWeather(weather);
       setLastUpdated(new Date());
-      setIsOffline(false);
+      // Only set online if we're actually online
+      if (isOnline) {
+        setIsOffline(false);
+      }
 
       // Cache the weather data
       await offlineCacheService.cacheCurrentWeather(location, weather, currentUserId);
@@ -206,7 +221,9 @@ export const useOfflineWeather = (apiKey?: string) => {
             setCurrentWeather(cachedWeather);
             setLastUpdated(new Date());
             // Only set offline if we're actually offline, not just using cached data
-            setIsOffline(!isOnline);
+            if (!isOnline) {
+              setIsOffline(true);
+            }
             return cachedWeather;
           }
         } catch (cacheError) {
@@ -247,7 +264,9 @@ export const useOfflineWeather = (apiKey?: string) => {
           setForecast(cachedForecast);
           setLastUpdated(new Date());
           // Only set offline if we're actually offline, not just using cached data
-          setIsOffline(!isOnline);
+          if (!isOnline) {
+            setIsOffline(true);
+          }
           return cachedForecast;
         }
       }
@@ -261,7 +280,10 @@ export const useOfflineWeather = (apiKey?: string) => {
 
       setForecast(forecastData);
       setLastUpdated(new Date());
-      setIsOffline(false);
+      // Only set online if we're actually online
+      if (isOnline) {
+        setIsOffline(false);
+      }
 
       // Cache the forecast data
       await offlineCacheService.cacheWeatherForecast(location, forecastData, currentUserId);
@@ -279,7 +301,9 @@ export const useOfflineWeather = (apiKey?: string) => {
             setForecast(cachedForecast);
             setLastUpdated(new Date());
             // Only set offline if we're actually offline, not just using cached data
-            setIsOffline(!isOnline);
+            if (!isOnline) {
+              setIsOffline(true);
+            }
             return cachedForecast;
           }
         } catch (cacheError) {
@@ -362,7 +386,10 @@ export const useOfflineWeather = (apiKey?: string) => {
       const alertsData = await weatherService.getWeatherAlerts(latitude, longitude);
       setAlerts(alertsData);
       setLastUpdated(new Date());
-      setIsOffline(false);
+      // Only set online if we're actually online
+      if (isOnline) {
+        setIsOffline(false);
+      }
       return alertsData;
     } catch (err) {
       console.error('Error fetching weather alerts:', err);
@@ -399,6 +426,50 @@ export const useOfflineWeather = (apiKey?: string) => {
     }
   }, []);
 
+  // Fast load function that shows cached data immediately and refreshes in background
+  const fastLoadWeather = useCallback(async (
+    latitude: number, 
+    longitude: number,
+    units: TemperatureUnit = 'celsius'
+  ) => {
+    try {
+      // Load cached data first for immediate display
+      const [cachedWeather, cachedForecast] = await Promise.allSettled([
+        loadCachedWeather(latitude, longitude),
+        loadCachedForecast(latitude, longitude),
+      ]);
+
+      // If we have cached data, show it immediately
+      if (cachedWeather.status === 'fulfilled' && cachedWeather.value) {
+        setCurrentWeather(cachedWeather.value);
+        setLastUpdated(new Date());
+      }
+      if (cachedForecast.status === 'fulfilled' && cachedForecast.value) {
+        setForecast(cachedForecast.value);
+        setLastUpdated(new Date());
+      }
+
+      // Then refresh with fresh data in background
+      const results = await Promise.allSettled([
+        fetchCurrentWeather(latitude, longitude, units, false), // false = show cached first
+        fetchForecast(latitude, longitude, units, false), // false = show cached first
+        // Temporarily disable alerts to prevent infinite loop
+        // fetchAlerts(latitude, longitude),
+      ]);
+      
+      // Log any failures but don't throw
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const operation = ['current weather', 'forecast'][index];
+          console.warn(`Failed to refresh ${operation}:`, result.reason);
+        }
+      });
+    } catch (err) {
+      console.error('Error loading weather:', err);
+      throw err;
+    }
+  }, [loadCachedWeather, loadCachedForecast, fetchCurrentWeather, fetchForecast]);
+
   const loadCachedWeather = useCallback(async (latitude: number, longitude: number) => {
     try {
       // Ensure user is initialized
@@ -410,7 +481,9 @@ export const useOfflineWeather = (apiKey?: string) => {
         setCurrentWeather(cachedWeather);
         setLastUpdated(new Date());
         // Only set offline if we're actually offline, not just using cached data
-        setIsOffline(!isOnline);
+        if (!isOnline) {
+          setIsOffline(true);
+        }
         return cachedWeather;
       }
     } catch (err) {
@@ -430,7 +503,9 @@ export const useOfflineWeather = (apiKey?: string) => {
         setForecast(cachedForecast);
         setLastUpdated(new Date());
         // Only set offline if we're actually offline, not just using cached data
-        setIsOffline(!isOnline);
+        if (!isOnline) {
+          setIsOffline(true);
+        }
         return cachedForecast;
       }
     } catch (err) {
@@ -527,6 +602,7 @@ export const useOfflineWeather = (apiKey?: string) => {
     searchLocations,
     reverseGeocode,
     refreshWeather,
+    fastLoadWeather,
     loadCachedWeather,
     loadCachedForecast,
     fastInitialize,

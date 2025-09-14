@@ -20,8 +20,9 @@ class PerformanceMonitor {
   private metrics: Map<string, PerformanceMetric> = new Map();
   private stats: Map<string, PerformanceStats> = new Map();
   private isEnabled: boolean = __DEV__; // Only enable in development
-  private logThreshold: number = 500; // Only log operations taking more than 500ms
-  private logLevel: 'none' | 'slow' | 'all' = 'none'; // Log level: none, slow, or all
+  private logThreshold: number = 100; // Reduced threshold for better performance monitoring
+  private logLevel: 'none' | 'slow' | 'all' = 'slow'; // Default to slow operations only
+  private maxMetrics: number = 1000; // Limit memory usage
 
   startTiming(name: string, metadata?: Record<string, any>): void {
     if (!this.isEnabled) return;
@@ -71,6 +72,15 @@ class PerformanceMonitor {
   }
 
   private updateStats(name: string, duration: number): void {
+    // Limit memory usage by capping the number of metrics
+    if (this.stats.size >= this.maxMetrics) {
+      // Remove oldest entries (simple FIFO)
+      const firstKey = this.stats.keys().next().value;
+      if (firstKey) {
+        this.stats.delete(firstKey);
+      }
+    }
+
     const existing = this.stats.get(name);
     if (existing) {
       existing.totalCalls++;

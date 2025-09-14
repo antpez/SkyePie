@@ -296,7 +296,7 @@ export const useTheme = () => {
     });
 
     return () => subscription?.remove();
-  }, [actualSystemTheme]);
+  }, []); // Remove actualSystemTheme dependency to prevent loop
 
   const setAndroidThemeOverrideCallback = useCallback((theme: 'light' | 'dark' | null) => {
     setAndroidThemeOverride(theme);
