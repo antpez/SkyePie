@@ -19,7 +19,7 @@ expo-env.d.ts
 
 # Generated native folders (when using prebuild)
 /android
-/ios
+# /ios - commented out for EAS builds
 
 # Metro
 .metro-health-check*

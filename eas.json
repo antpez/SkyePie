@@ -30,7 +30,8 @@
       "autoIncrement": true,
       "node": "22.17.1",
       "ios": {
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "simulator": false
       },
       "android": {
         "buildType": "app-bundle"
