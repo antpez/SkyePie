@@ -31,8 +31,7 @@
       "node": "22.17.1",
       "ios": {
         "buildConfiguration": "Release",
-        "simulator": false,
-        "prebuildCommand": "npx expo prebuild --platform ios --clean"
+        "simulator": false
       },
       "android": {
         "buildType": "app-bundle"

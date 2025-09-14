@@ -31,65 +31,11 @@ export default {
     slug: "skyepie",
     version: "1.0.0",
     runtimeVersion: getRuntimeVersion(),
-    plugins: [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#ffffff",
-          "image": "./assets/splash-icon.png",
-          "resizeMode": "cover",
-          "dark": {
-            "backgroundColor": "#000000",
-            "image": ""
-          },
-          "imageWidth": 200,
-        }
-      ]
-    ],
     assetBundlePatterns: [
       "**/*"
     ],
     web: {
       bundler: "metro"
-    },
-    android: {
-      package: "com.antpez.skyepie",
-      adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#ffffff"
-      },
-      splash: {
-        image: "",
-        resizeMode: "cover",
-        backgroundColor: "#87CEEB"
-      },
-      runtimeVersion: getRuntimeVersion(),
-      permissions: [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
-    },
-    ios: {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.antpez.skyepie",
-      "deploymentTarget": "15.1",
-      "icon": {
-        "light": "./assets/icon-1757816287706-2.png",
-        "dark": "./assets/icon-1757816287706-2.png",
-        "tinted": "./assets/icon-1757816287706-2.png"
-      },
-      splash: {
-        image: "",
-        resizeMode: "cover",
-        backgroundColor: "#87CEEB"
-      },
-      runtimeVersion: getRuntimeVersion(),
-      infoPlist: {
-        NSLocationWhenInUseUsageDescription: "This app needs access to location to provide weather information for your current area.",
-        NSLocationAlwaysAndWhenInUseUsageDescription: "This app needs access to location to provide weather information for your current area.",
-        NSLocationAlwaysUsageDescription: "This app needs access to location to provide weather information for your current area."
-      }
     },
     updates: {
       url: "https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa",
