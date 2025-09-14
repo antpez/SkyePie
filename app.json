@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "SkyePie",
+    "slug": "skyepie",
+    "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
+    "extra": {
+      "eas": {
+        "projectId": "c2589986-dccf-4d6f-8bfb-adc2d6bca8fa"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.antpez.skyepie"
+    },
+    "android": {
+      "package": "com.antpez.skyepie"
+    }
+  }
+}
