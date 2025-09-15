@@ -30,12 +30,19 @@ export default {
     name: "SkyePie",
     slug: "skyepie",
     version: "1.0.0",
+    scheme: "skyepie",
     runtimeVersion: getRuntimeVersion(),
     assetBundlePatterns: [
       "**/*"
     ],
     web: {
       bundler: "metro"
+    },
+    ios: {
+      bundleIdentifier: "com.antpez.skyepie"
+    },
+    android: {
+      package: "com.antpez.skyepie"
     },
     updates: {
       url: "https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa",
