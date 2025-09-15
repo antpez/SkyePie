@@ -64,6 +64,9 @@ export const FavoriteLocationCard: React.FC<FavoriteLocationCardProps> = memo(({
     try {
       setWeatherPreview(prev => ({ ...prev, isLoading: true, error: undefined }));
       
+      if (!APP_CONFIG.api.openWeatherMap.apiKey) {
+        throw new Error('Weather service not initialized. Please provide an API key.');
+      }
       const weatherService = new WeatherService(APP_CONFIG.api.openWeatherMap.apiKey);
       const weather = await weatherService.getCurrentWeather(
         location.latitude,

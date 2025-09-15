@@ -11,7 +11,7 @@ export const APP_CONFIG = {
     openWeatherMap: {
       baseUrl: 'https://api.openweathermap.org/data/2.5',
       geocodingUrl: 'https://api.openweathermap.org/geo/1.0',
-      apiKey: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENWEATHER_API_KEY || '',
+      apiKey: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENWEATHER_API_KEY || 'demo',
     },
     groq: {
       baseUrl: 'https://api.groq.com/openai/v1',
