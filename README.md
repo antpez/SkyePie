@@ -47,7 +47,7 @@ npm install
    - Generate an API key
 
 4. Configure the API key:
-   - Open `src/config/app.ts`
+   - Open `.env file`
    - Replace `'your_api_key_here'` with your actual API key
    - Or set the environment variable `EXPO_PUBLIC_OPENWEATHER_API_KEY`
 
