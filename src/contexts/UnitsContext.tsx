@@ -108,7 +108,17 @@ export function UnitsProvider({ children }: UnitsProviderProps) {
 export function useUnits(): UnitsContextType {
   const context = useContext(UnitsContext);
   if (context === undefined) {
-    throw new Error('useUnits must be used within a UnitsProvider');
+    // Return default values instead of throwing error to prevent crashes
+    return {
+      units: DEFAULT_UNITS,
+      setTemperatureUnit: async () => {},
+      setWindSpeedUnit: async () => {},
+      setPressureUnit: async () => {},
+      setDistanceUnit: async () => {},
+      setUnits: async () => {},
+      resetToDefaults: async () => {},
+      isLoading: false,
+    };
   }
   return context;
 }

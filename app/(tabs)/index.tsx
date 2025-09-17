@@ -208,19 +208,20 @@ const WeatherScreen = memo(() => {
       console.log('Processing weather data for location:', currentWeather.name, 'Coordinates from weather API response:', currentWeather.coord?.lat, currentWeather.coord?.lon);
     }
     
+    // Add safety checks for all object properties
     return {
-      name: currentWeather.name,
-      condition: currentWeather.weather[0]?.description || 'Clear sky',
-      temperature: currentWeather.main.temp,
-      feelsLike: currentWeather.main.feels_like,
-      humidity: currentWeather.main.humidity,
-      windSpeed: currentWeather.wind.speed,
-      pressure: currentWeather.main.pressure,
-      visibility: currentWeather.visibility,
-      sunrise: currentWeather.sys.sunrise,
-      sunset: currentWeather.sys.sunset,
-      timezone: currentWeather.timezone,
-      weatherIcon: currentWeather.weather[0] || { id: 800, main: 'Clear', description: 'clear sky', icon: '01d' }
+      name: currentWeather.name || 'Unknown Location',
+      condition: currentWeather.weather?.[0]?.description || 'Clear sky',
+      temperature: currentWeather.main?.temp || 0,
+      feelsLike: currentWeather.main?.feels_like || 0,
+      humidity: currentWeather.main?.humidity || 0,
+      windSpeed: currentWeather.wind?.speed || 0,
+      pressure: currentWeather.main?.pressure || 0,
+      visibility: currentWeather.visibility || 0,
+      sunrise: currentWeather.sys?.sunrise || 0,
+      sunset: currentWeather.sys?.sunset || 0,
+      timezone: currentWeather.timezone || 0,
+      weatherIcon: currentWeather.weather?.[0] || { id: 800, main: 'Clear', description: 'clear sky', icon: '01d' }
     };
   }, [currentWeather]);
 

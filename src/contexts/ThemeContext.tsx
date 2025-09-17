@@ -23,17 +23,18 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = React.memo(({ children }) => {
-  const { 
-    themeMode, 
-    effectiveTheme, 
-    isLoading, 
-    setTheme, 
-    toggleTheme, 
-    refreshSystemTheme, 
-    actualSystemTheme, 
-    setAndroidThemeOverride, 
-    androidThemeOverride 
-  } = useThemeHook();
+  const themeHookResult = useThemeHook();
+  
+  // Add comprehensive safety checks
+  const themeMode = themeHookResult?.themeMode || 'auto';
+  const effectiveTheme = themeHookResult?.effectiveTheme || 'light';
+  const isLoading = themeHookResult?.isLoading || false;
+  const setTheme = themeHookResult?.setTheme || (() => Promise.resolve());
+  const toggleTheme = themeHookResult?.toggleTheme || (() => {});
+  const refreshSystemTheme = themeHookResult?.refreshSystemTheme || (() => Promise.resolve());
+  const actualSystemTheme = themeHookResult?.actualSystemTheme || null;
+  const setAndroidThemeOverride = themeHookResult?.setAndroidThemeOverride || (() => {});
+  const androidThemeOverride = themeHookResult?.androidThemeOverride || null;
   
   // Memoize theme selection to prevent recreation
   const theme = useMemo(() => {

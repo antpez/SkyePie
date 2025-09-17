@@ -133,7 +133,19 @@ export function DisplayPreferencesProvider({ children }: DisplayPreferencesProvi
 export function useDisplayPreferences(): DisplayPreferencesContextType {
   const context = useContext(DisplayPreferencesContext);
   if (context === undefined) {
-    throw new Error('useDisplayPreferences must be used within a DisplayPreferencesProvider');
+    // Return default values instead of throwing error to prevent crashes
+    return {
+      preferences: DEFAULT_DISPLAY_PREFERENCES,
+      setShowFeelsLike: async () => {},
+      setShowHumidity: async () => {},
+      setShowWindSpeed: async () => {},
+      setShowPressure: async () => {},
+      setShowUVIndex: async () => {},
+      setShowSunriseSunset: async () => {},
+      setPreferences: async () => {},
+      resetToDefaults: async () => {},
+      isLoading: false,
+    };
   }
   return context;
 }

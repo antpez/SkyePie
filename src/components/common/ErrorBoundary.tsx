@@ -2,6 +2,7 @@ import React, { Component, ReactNode } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, Card } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
+import { lightTheme } from '../../styles';
 
 interface Props {
   children: ReactNode;
@@ -45,7 +46,17 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 const ErrorFallback: React.FC<{ error?: Error; onRetry?: () => void }> = ({ error, onRetry }) => {
-  const { effectiveTheme, theme } = useThemeContext();
+  // Use a try-catch to safely access theme context
+  let theme, effectiveTheme;
+  try {
+    const themeContext = useThemeContext();
+    theme = themeContext?.theme || lightTheme;
+    effectiveTheme = themeContext?.effectiveTheme || 'light';
+  } catch (err) {
+    // Fallback to light theme if context is not available
+    theme = lightTheme;
+    effectiveTheme = 'light';
+  }
 
   return (
     <View style={styles.container}>
