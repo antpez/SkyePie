@@ -37,6 +37,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = React.memo(({ childre
   
   // Memoize theme selection to prevent recreation
   const theme = useMemo(() => {
+    if (!effectiveTheme) {
+      console.warn('effectiveTheme is undefined, falling back to light theme');
+      return lightTheme;
+    }
     return effectiveTheme === 'dark' ? darkTheme : lightTheme;
   }, [effectiveTheme]);
 

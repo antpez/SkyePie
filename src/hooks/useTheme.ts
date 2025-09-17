@@ -9,18 +9,15 @@ export const useTheme = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [actualSystemTheme, setActualSystemTheme] = useState<'light' | 'dark' | null>(null);
   const [androidThemeOverride, setAndroidThemeOverride] = useState<'light' | 'dark' | null>(null);
+  const [autoThemeUpdate, setAutoThemeUpdate] = useState(0);
 
   const loadTheme = useCallback(async () => {
     try {
       const savedTheme = await storageService.getTheme();
       console.log('Loading theme from storage:', savedTheme);
       
-      // Migrate 'system' to 'auto' for better functionality
-      const migratedTheme = savedTheme === 'system' ? 'auto' : savedTheme;
-      if (savedTheme === 'system') {
-        console.log('Migrating theme from system to auto');
-        await storageService.saveTheme('system');
-      }
+      // Use the saved theme directly
+      const migratedTheme = savedTheme;
       
       setThemeMode(migratedTheme);
       
@@ -58,8 +55,8 @@ export const useTheme = () => {
   const saveTheme = useCallback(async (mode: ThemeMode) => {
     try {
       console.log('Saving theme:', mode);
-      // Convert 'auto' to 'system' for storage service compatibility
-      const storageMode = mode === 'auto' ? 'system' : mode;
+      // Use the mode directly
+      const storageMode = mode;
       await storageService.saveTheme(storageMode);
       setThemeMode(mode);
       console.log('Theme saved and state updated:', mode);
@@ -96,28 +93,7 @@ export const useTheme = () => {
       return effective;
     }
     
-    if (themeMode === 'auto' as ThemeMode) {
-      // For Android, since we hide the system option, default to light
-      if (require('react-native').Platform.OS === 'android') {
-        console.log('Android system mode - defaulting to light (system option hidden)');
-        return 'light';
-      }
-      
-      // For iOS, use the standard approach
-      const systemTheme = actualSystemTheme || systemColorScheme;
-      const effective = systemTheme === 'dark' ? 'dark' : 'light';
-      console.log('iOS system theme calculation:', {
-        themeMode,
-        actualSystemTheme,
-        systemColorScheme,
-        systemTheme,
-        effective,
-        Platform: require('react-native').Platform.OS
-      });
-      return effective;
-    }
-    
-    return themeMode || 'auto';
+    return themeMode === 'light' ? 'light' : themeMode === 'dark' ? 'dark' : 'light';
   }, [themeMode, systemColorScheme, actualSystemTheme, androidThemeOverride]);
 
   // Helper function to detect Android system theme
@@ -298,14 +274,28 @@ export const useTheme = () => {
     return () => subscription?.remove();
   }, []); // Remove actualSystemTheme dependency to prevent loop
 
+  // Auto theme timer - refresh every minute to update based on time
+  useEffect(() => {
+    if (themeMode === 'auto') {
+      const interval = setInterval(() => {
+        // Force re-render by updating the auto theme update counter
+        setAutoThemeUpdate(prev => prev + 1);
+      }, 60000); // Update every minute
+
+      return () => clearInterval(interval);
+    }
+  }, [themeMode]);
+
   const setAndroidThemeOverrideCallback = useCallback((theme: 'light' | 'dark' | null) => {
     setAndroidThemeOverride(theme);
     console.log('Android theme override set:', theme);
   }, []);
 
+  const effectiveTheme = getEffectiveTheme();
+  
   return {
     themeMode: themeMode || 'auto', // Fallback to 'auto' if undefined
-    effectiveTheme: getEffectiveTheme(),
+    effectiveTheme: effectiveTheme || 'light', // Ensure effectiveTheme is never undefined
     isLoading,
     setTheme: saveTheme,
     toggleTheme,

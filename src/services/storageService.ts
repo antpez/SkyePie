@@ -136,13 +136,13 @@ export class StorageService {
   }
 
   // Theme
-  async saveTheme(theme: 'light' | 'dark' | 'system'): Promise<void> {
+  async saveTheme(theme: 'light' | 'dark' | 'auto'): Promise<void> {
     return this.setItem(STORAGE_KEYS.theme, theme);
   }
 
-  async getTheme(): Promise<'light' | 'dark' | 'system'> {
-    const theme = await this.getItem<'light' | 'dark' | 'system'>(STORAGE_KEYS.theme);
-    return theme || 'system';
+  async getTheme(): Promise<'light' | 'dark' | 'auto'> {
+    const theme = await this.getItem<'light' | 'dark' | 'auto'>(STORAGE_KEYS.theme);
+    return theme || 'auto';
   }
 
   // Permissions
