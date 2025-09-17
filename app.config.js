@@ -31,18 +31,33 @@ export default {
     slug: "skyepie",
     version: "1.0.0",
     scheme: "skyepie",
+    icon: "./assets/icon-1757816287706-2.png",
+    plugins: [
+      "expo-router"
+    ],
     runtimeVersion: getRuntimeVersion(),
     assetBundlePatterns: [
       "**/*"
     ],
+    splash: {
+      image: "./assets/splash-icon.png",
+      backgroundColor: "#000000",
+      resizeMode: "contain"
+    },
     web: {
-      bundler: "metro"
+      bundler: "metro",
+      icon: "./assets/iconskyepieweb.png"
     },
     ios: {
-      bundleIdentifier: "com.antpez.skyepie"
+      bundleIdentifier: "com.antpez.skyepie",
+      icon: "./assets/iconskyepieios.png"
     },
     android: {
-      package: "com.antpez.skyepie"
+      package: "com.antpez.skyepie",
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#ffffff"
+      }
     },
     updates: {
       url: "https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa",

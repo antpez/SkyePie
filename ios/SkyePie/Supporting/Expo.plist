@@ -8,10 +8,6 @@
     <true/>
     <key>EXUpdatesLaunchWaitMs</key>
     <integer>0</integer>
-    <key>EXUpdatesRuntimeVersion</key>
-    <string>1.0.0</string>
-    <key>EXUpdatesURL</key>
-    <string>https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa</string>
     <key>EXUpdatesRequestHeaders</key>
     <dict>
       <key>expo-runtime-version</key>
@@ -21,5 +17,9 @@
       <key>expo-platform</key>
       <string>ios</string>
     </dict>
+    <key>EXUpdatesRuntimeVersion</key>
+    <string>1.0.0</string>
+    <key>EXUpdatesURL</key>
+    <string>https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa</string>
   </dict>
 </plist>

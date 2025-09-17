@@ -18,12 +18,12 @@ This weather app provides users with a **clean, minimal interface** to quickly v
 ## 🚀 App Flow
 
 ### 1. Launch Screen
-- On app open, the user immediately sees the **current weather** for their location
-- **Location permissions enabled:**
-  - App detects the device's current location
-  - Automatically displays current weather and forecast for that location
-- **Location permissions not enabled:**
-  - User is prompted to either **enable location access** or **enter a location manually**
+- [x] On app open, the user immediately sees the **current weather** for their location
+- [x] **Location permissions enabled:**
+  - [x] App detects the device's current location
+  - [x] Automatically displays current weather and forecast for that location
+- [x] **Location permissions not enabled:**
+  - [x] User is prompted to either **enable location access** or **enter a location manually**
 
 ### 2. Main Weather Screen
 This is the **core screen** users see most often.
@@ -31,72 +31,72 @@ This is the **core screen** users see most often.
 #### Layout Structure
 
 **🔍 Top Section**
-- Search field with placeholder: *"Enter city or location"*
-- Search supports autocomplete and remembers recent searches
+- [x] Search field with placeholder: *"Enter city or location"*
+- [x] Search supports autocomplete and remembers recent searches
 
 **🌤️ Center Section**
-- Current weather condition (icon + text, e.g., ☀️ "Sunny")
-- Current temperature displayed prominently below the weather condition
-- Optional: Feels-like temperature, humidity, or wind speed (can be toggled in settings)
+- [x] Current weather condition (icon + text, e.g., ☀️ "Sunny")
+- [x] Current temperature displayed prominently below the weather condition
+- [x] Optional: Feels-like temperature, humidity, or wind speed (can be toggled in settings)
 
 **📅 Bottom Section**
-- **Forecast Toggle** - Switch between Daily and Hourly views
-- **7-Day Forecast Row** (Daily view)
-  - Horizontal scrollable row
-  - Each day shows:
-    - Day of the week (e.g., Mon, Tue)
-    - Weather icon (e.g., 🌧️, ☀️, ⛅)
-    - High / low temperature
-- **24-Hour Forecast Row** (Hourly view)
-  - Horizontal scrollable row
-  - Each hour shows:
-    - Time (e.g., 2PM, 5PM)
-    - Weather icon and condition
-    - Temperature and feels-like
-    - Humidity, wind speed, and precipitation probability
-- **Favorite Locations** - Quick access to saved locations with weather previews
+- [x] **Forecast Toggle** - Switch between Daily and Hourly views
+- [x] **7-Day Forecast Row** (Daily view)
+  - [x] Horizontal scrollable row
+  - [x] Each day shows:
+    - [x] Day of the week (e.g., Mon, Tue)
+    - [x] Weather icon (e.g., 🌧️, ☀️, ⛅)
+    - [x] High / low temperature
+- [x] **24-Hour Forecast Row** (Hourly view)
+  - [x] Horizontal scrollable row
+  - [x] Each hour shows:
+    - [x] Time (e.g., 2PM, 5PM)
+    - [x] Weather icon and condition
+    - [x] Temperature and feels-like
+    - [x] Humidity, wind speed, and precipitation probability
+- [x] **Favorite Locations** - Quick access to saved locations with weather previews
 
 ### 3. Search & Location Handling
-- Users can tap into the **search field** to:
-  - Enter a city, town, or zip code
-  - See autocomplete suggestions
-  - Select a location to view its weather
-- Recent searches appear below the field for quick access
+- [x] Users can tap into the **search field** to:
+  - [x] Enter a city, town, or zip code
+  - [x] See autocomplete suggestions
+  - [x] Select a location to view its weather
+- [x] Recent searches appear below the field for quick access
 
 ### 4. Favorites Management
-- **Integrated Favorites** - Saved locations displayed on main weather screen
-- **Weather Preview Cards** - Each favorite shows current weather at a glance
-- **Real-time Updates** - Weather data refreshes automatically
-- **Easy Management** - Add/remove favorites with simple gestures
-- **Quick Navigation** - Tap any favorite to instantly view its weather
+- [x] **Integrated Favorites** - Saved locations displayed on main weather screen
+- [x] **Weather Preview Cards** - Each favorite shows current weather at a glance
+- [x] **Real-time Updates** - Weather data refreshes automatically
+- [x] **Easy Management** - Add/remove favorites with simple gestures
+- [x] **Quick Navigation** - Tap any favorite to instantly view its weather
 
 ### 5. Permissions & Location Services
-- **On first launch:**
-  - App requests **location permission**
-  - If denied, user is redirected to manual search mode
-- **Location detection uses:**
-  - Device GPS
-  - Or fallback to IP-based location
+- [x] **On first launch:**
+  - [x] App requests **location permission**
+  - [x] If denied, user is redirected to manual search mode
+- [x] **Location detection uses:**
+  - [x] Device GPS
+  - [x] Or fallback to IP-based location
 
 ---
 
 ## ⚙️ Additional Features
 
 ### Core Functionality
-- **Swipe to refresh**: Users can pull down to refresh weather data
-- **Light/Dark mode**: The interface adapts to system theme
-- **24-Hour Hourly Forecast**: Detailed hourly weather with comprehensive data
-- **Weather Preview Cards**: Real-time weather in favorites list
+- [x] **Swipe to refresh**: Users can pull down to refresh weather data
+- [x] **Light/Dark mode**: The interface adapts to system theme
+- [x] **24-Hour Hourly Forecast**: Detailed hourly weather with comprehensive data
+- [x] **Weather Preview Cards**: Real-time weather in favorites list
 
 ### Navigation & Tabs
-- **Weather Tab**: Main weather screen with current conditions, forecasts, and favorite locations
-- **Search Tab**: Location search with autocomplete and history
-- **Settings Tab**: App configuration and preferences
+- [x] **Weather Tab**: Main weather screen with current conditions, forecasts, and favorite locations
+- [x] **Search Tab**: Location search with autocomplete and history
+- [x] **Settings Tab**: App configuration and preferences
 
 ### Error Handling
-- **Network unavailable** → show cached last known weather + message
-- **Location not found** → show friendly error + allow re-entry
-- **API failures** → comprehensive error states with user-friendly messages
+- [x] **Network unavailable** → show cached last known weather + message
+- [x] **Location not found** → show friendly error + allow re-entry
+- [x] **API failures** → comprehensive error states with user-friendly messages
 
 ---
 
@@ -107,9 +107,9 @@ The app requires a reliable weather API (e.g., OpenWeather, WeatherAPI, AccuWeat
 
 ### API Capabilities
 Must support:
-- Current conditions
-- 7-day forecast
-- Search by city/coordinates
+- [x] Current conditions
+- [x] 7-day forecast
+- [x] Search by city/coordinates
 
 ---
 

@@ -200,7 +200,10 @@ export const createStaggeredAnimation = (
   animationFn: (value: Animated.Value) => Animated.CompositeAnimation
 ) => {
   const animations = animatedValues.map((value, index) => {
-    return Animated.delay(index * delay, animationFn(value));
+    return Animated.sequence([
+      Animated.delay(index * delay),
+      animationFn(value),
+    ]);
   });
   
   return Animated.parallel(animations);

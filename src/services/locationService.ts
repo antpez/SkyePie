@@ -54,7 +54,7 @@ export class LocationService {
         accuracy: Location.Accuracy.Balanced,
         timeInterval: 5000, // Reduced from 10000ms to 5000ms
         distanceInterval: 10,
-        maximumAge: 30000, // Use cached location if less than 30 seconds old
+        // maximumAge is not part of LocationOptions in expo-location@19
       });
 
       const coordinates: LocationCoordinates = {

@@ -52,7 +52,15 @@ class ImageLoader {
     }
 
     try {
-      await Image.prefetch(source);
+      if (typeof source === 'string') {
+        await Image.prefetch(source);
+      } else {
+        // For local assets (numeric), resolve and prefetch the URI if available
+        const resolved = Image.resolveAssetSource(source as number);
+        if (resolved && resolved.uri) {
+          await Image.prefetch(resolved.uri);
+        }
+      }
       this.cache[key] = {
         loaded: true,
         error: false,
