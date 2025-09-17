@@ -10,9 +10,15 @@ export const useTheme = () => {
   const [actualSystemTheme, setActualSystemTheme] = useState<'light' | 'dark' | null>(null);
   const [androidThemeOverride, setAndroidThemeOverride] = useState<'light' | 'dark' | null>(null);
   const [autoThemeUpdate, setAutoThemeUpdate] = useState(0);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const loadTheme = useCallback(async () => {
     try {
+      console.log('🔄 Starting theme loading...');
+      
+      // Set a minimum loading time to ensure proper initialization
+      const loadingPromise = new Promise(resolve => setTimeout(resolve, 100));
+      
       const savedTheme = await storageService.getTheme();
       console.log('Loading theme from storage:', savedTheme);
       
@@ -45,8 +51,18 @@ export const useTheme = () => {
         Platform: require('react-native').Platform.OS
       });
       setActualSystemTheme(currentSystemTheme || null);
+      
+      // Wait for minimum loading time
+      await loadingPromise;
+      
+      // Mark as initialized
+      setIsInitialized(true);
+      console.log('✅ Theme loading completed and initialized');
+      
     } catch (error) {
       console.error('Error loading theme:', error);
+      // Even on error, mark as initialized to prevent infinite loading
+      setIsInitialized(true);
     } finally {
       setIsLoading(false);
     }
@@ -66,6 +82,12 @@ export const useTheme = () => {
   }, []);
 
   const getEffectiveTheme = useCallback(() => {
+    // If not initialized yet, return a safe default
+    if (!isInitialized) {
+      console.log('Theme not initialized yet, returning light theme');
+      return 'light';
+    }
+    
     // For Android, always check override first
     if (require('react-native').Platform.OS === 'android' && androidThemeOverride) {
       console.log('Android theme override active:', {
@@ -94,7 +116,7 @@ export const useTheme = () => {
     }
     
     return themeMode === 'light' ? 'light' : themeMode === 'dark' ? 'dark' : 'light';
-  }, [themeMode, systemColorScheme, actualSystemTheme, androidThemeOverride]);
+  }, [themeMode, systemColorScheme, actualSystemTheme, androidThemeOverride, isInitialized]);
 
   // Helper function to detect Android system theme
   const detectAndroidSystemTheme = useCallback(() => {
@@ -296,12 +318,13 @@ export const useTheme = () => {
   return {
     themeMode: themeMode || 'auto', // Fallback to 'auto' if undefined
     effectiveTheme: effectiveTheme || 'light', // Ensure effectiveTheme is never undefined
-    isLoading,
+    isLoading: isLoading || !isInitialized, // Show loading until fully initialized
     setTheme: saveTheme,
     toggleTheme,
     refreshSystemTheme,
     actualSystemTheme,
     setAndroidThemeOverride: setAndroidThemeOverrideCallback,
     androidThemeOverride,
+    isInitialized, // Expose initialization state
   };
 };

@@ -7,6 +7,7 @@ interface ThemeContextType {
   themeMode: ThemeMode;
   effectiveTheme: 'light' | 'dark';
   isLoading: boolean;
+  isInitialized: boolean;
   setTheme: (mode: ThemeMode) => Promise<void>;
   toggleTheme: () => void;
   theme: typeof lightTheme | typeof darkTheme;
@@ -29,6 +30,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = React.memo(({ childre
   const themeMode = themeHookResult?.themeMode || 'auto';
   const effectiveTheme = themeHookResult?.effectiveTheme || 'light';
   const isLoading = themeHookResult?.isLoading || false;
+  const isInitialized = themeHookResult?.isInitialized || false;
   const setTheme = themeHookResult?.setTheme || (() => Promise.resolve());
   const toggleTheme = themeHookResult?.toggleTheme || (() => {});
   const refreshSystemTheme = themeHookResult?.refreshSystemTheme || (() => Promise.resolve());
@@ -50,6 +52,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = React.memo(({ childre
     themeMode,
     effectiveTheme,
     isLoading,
+    isInitialized,
     setTheme,
     toggleTheme,
     theme,
@@ -57,7 +60,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = React.memo(({ childre
     actualSystemTheme,
     setAndroidThemeOverride,
     androidThemeOverride,
-  }), [themeMode, effectiveTheme, isLoading, setTheme, toggleTheme, theme, refreshSystemTheme, actualSystemTheme, setAndroidThemeOverride, androidThemeOverride]);
+  }), [themeMode, effectiveTheme, isLoading, isInitialized, setTheme, toggleTheme, theme, refreshSystemTheme, actualSystemTheme, setAndroidThemeOverride, androidThemeOverride]);
 
   return (
     <ThemeContext.Provider value={value}>

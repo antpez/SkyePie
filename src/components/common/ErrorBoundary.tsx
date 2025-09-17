@@ -54,6 +54,7 @@ const ErrorFallback: React.FC<{ error?: Error; onRetry?: () => void }> = ({ erro
     effectiveTheme = themeContext?.effectiveTheme || 'light';
   } catch (err) {
     // Fallback to light theme if context is not available
+    console.warn('ErrorBoundary: Theme context not available, using fallback theme');
     theme = lightTheme;
     effectiveTheme = 'light';
   }
