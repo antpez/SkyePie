@@ -14,6 +14,7 @@
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		FA5BFACE9D2A82681FF78959 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3033A2ECA60807A6D6725829 /* PrivacyInfo.xcprivacy */; };
 		FC473A953F434614D8A18CBD /* libPods-SkyePie.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 697415BED1BB8C155A85B4EC /* libPods-SkyePie.a */; };
+		BBD4C5C7B24A4E8DB9957C7E /* icon2.icon in Resources */ = {isa = PBXBuildFile; fileRef = 51936F451CBB43A3909F51CD /* icon2.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = SkyePie/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* SkyePie-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "SkyePie-Bridging-Header.h"; path = "SkyePie/SkyePie-Bridging-Header.h"; sourceTree = "<group>"; };
+		51936F451CBB43A3909F51CD /* icon2.icon */ = {isa = PBXFileReference; name = "icon2.icon"; path = "SkyePie/icon2.icon"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +56,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				3033A2ECA60807A6D6725829 /* PrivacyInfo.xcprivacy */,
+				51936F451CBB43A3909F51CD /* icon2.icon */,
 			);
 			name = SkyePie;
 			sourceTree = "<group>";
@@ -197,6 +200,7 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				FA5BFACE9D2A82681FF78959 /* PrivacyInfo.xcprivacy in Resources */,
+				BBD4C5C7B24A4E8DB9957C7E /* icon2.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -377,7 +381,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1059B17B4A2CE7B05E0441AB /* Pods-SkyePie.debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = SkyePie/SkyePie.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
@@ -401,11 +405,11 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.antpez.skyepie;
-				PRODUCT_NAME = SkyePie;
+				PRODUCT_NAME = "SkyePie";
 				SWIFT_OBJC_BRIDGING_HEADER = "SkyePie/SkyePie-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -414,7 +418,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BC76DF9282544470DAC7AC7B /* Pods-SkyePie.release.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = SkyePie/SkyePie.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
@@ -433,10 +437,10 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.antpez.skyepie;
-				PRODUCT_NAME = SkyePie;
+				PRODUCT_NAME = "SkyePie";
 				SWIFT_OBJC_BRIDGING_HEADER = "SkyePie/SkyePie-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
@@ -475,7 +479,7 @@
 				DEVELOPMENT_TEAM = 6NG7KH6C74;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -505,6 +509,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
 				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				USE_HERMES = true;
+				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 			};
 			name = Debug;
 		};
@@ -543,7 +548,6 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -566,6 +570,7 @@
 				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 			};
 			name = Release;
 		};

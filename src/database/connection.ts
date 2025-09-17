@@ -37,7 +37,50 @@ class DatabaseConnection {
   async initialize(): Promise<void> {
     return performanceMonitor.measureAsync('DatabaseConnection.initialize', async () => {
       try {
-        this.db = await SQLite.openDatabaseAsync('skyepie.db');
+        // Use async API if available, otherwise fallback to classic API
+        if (typeof SQLite.openDatabaseAsync === 'function') {
+          this.db = await SQLite.openDatabaseAsync('skyepie.db');
+        } else if (typeof SQLite.openDatabase === 'function') {
+          const legacyDb = SQLite.openDatabase('skyepie.db');
+          // Shim minimal async methods expected by the rest of this class
+          this.db = {
+            execAsync: (sql: string) => new Promise<void>((resolve, reject) => {
+              legacyDb.transaction(
+                (tx: any) => tx.executeSql(sql),
+                (err: any) => reject(err),
+                () => resolve()
+              );
+            }),
+            runAsync: (sql: string, params: any[] = []) => new Promise<void>((resolve, reject) => {
+              legacyDb.transaction(
+                (tx: any) => tx.executeSql(sql, params),
+                (err: any) => reject(err),
+                () => resolve()
+              );
+            }),
+            getFirstAsync: <T>(sql: string, params: any[] = []) => new Promise<T | null>((resolve, reject) => {
+              legacyDb.readTransaction(
+                (tx: any) => tx.executeSql(sql, params, (_: any, res: any) => {
+                  resolve(res.rows?.length ? res.rows.item(0) : null);
+                }),
+                (err: any) => reject(err)
+              );
+            }),
+            getAllAsync: <T>(sql: string, params: any[] = []) => new Promise<T[]>((resolve, reject) => {
+              legacyDb.readTransaction(
+                (tx: any) => tx.executeSql(sql, params, (_: any, res: any) => {
+                  const items: T[] = [];
+                  for (let i = 0; i < res.rows.length; i++) items.push(res.rows.item(i));
+                  resolve(items);
+                }),
+                (err: any) => reject(err)
+              );
+            }),
+            closeAsync: () => Promise.resolve(),
+          } as unknown as SQLiteDatabase;
+        } else {
+          throw new Error('expo-sqlite is missing required APIs');
+        }
         
         // Validate database connection
         if (!this.db) {

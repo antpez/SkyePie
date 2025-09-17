@@ -41,17 +41,24 @@ export default {
     ],
     splash: {
       image: "./assets/splash-icon.png",
-      backgroundColor: "#000000",
-      resizeMode: "contain"
+      backgroundColor: "#ffffff",
+      resizeMode: "contain",
+      dark: {
+        backgroundColor: "#000000"
+      }
     },
     web: {
       bundler: "metro",
       icon: "./assets/iconskyepieweb.png"
     },
     ios: {
+      supportsTablet: true,
       bundleIdentifier: "com.antpez.skyepie",
-      icon: "./assets/iconskyepieios.png"
+      icon: "./assets/icon2.icon",
+      config: {
+        usesNonExemptEncryption: false,
     },
+  },
     android: {
       package: "com.antpez.skyepie",
       adaptiveIcon: {

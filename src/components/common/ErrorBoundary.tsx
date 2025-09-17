@@ -57,7 +57,7 @@ const ErrorFallback: React.FC<{ error?: Error; onRetry?: () => void }> = ({ erro
           <Text variant="bodyMedium" style={[styles.message, { color: theme.colors.onSurface }]}>
             We're sorry, but something unexpected happened. Please try again.
           </Text>
-          {__DEV__ && error && (
+          {error && (
             <Text variant="bodySmall" style={[styles.errorDetails, { color: theme.colors.onSurfaceVariant }]}>
               {error.message}
             </Text>

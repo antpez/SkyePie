@@ -1,15 +1,14 @@
 {
   "fill" : {
-    "solid" : "display-p3:1.00000,0.99317,0.90122,1.00000"
+    "solid" : "display-p3:0.96783,0.94296,0.78848,1.00000"
   },
   "groups" : [
     {
       "layers" : [
         {
           "glass" : false,
-          "hidden" : false,
-          "image-name" : "iconskyepieios.png",
-          "name" : "iconskyepieios"
+          "image-name" : "skyepiebkup.png",
+          "name" : "skyepiebkup"
         }
       ],
       "shadow" : {
