@@ -52,13 +52,51 @@ export class LocationService {
         // Permission is now granted, we can proceed
       }
 
+      // Ensure device location services are enabled
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        throw { code: 'E_LOCATION_SERVICES_DISABLED', message: 'Location services disabled' };
+      }
+
       console.log('📍 Attempting to get current position...');
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: 10000, // Increased timeout for physical devices
-        distanceInterval: 10,
-        // maximumAge is not part of LocationOptions in expo-location@19
+
+      // Quick warm start: try last known position first
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown?.coords) {
+        this.currentLocation = {
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+          accuracy: lastKnown.coords.accuracy || undefined,
+          altitude: lastKnown.coords.altitude || undefined,
+          heading: lastKnown.coords.heading || undefined,
+          speed: lastKnown.coords.speed || undefined,
+        };
+      }
+
+      // Race a high-accuracy request with a timeout to avoid hanging on Android
+      const timeoutMs = 15000;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject({ code: 'E_LOCATION_TIMEOUT', message: 'Timed out getting location' }), timeoutMs)
+      );
+
+      const liveLocation = await Promise.race([
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+          timeInterval: 10000,
+          distanceInterval: 10,
+        }),
+        timeoutPromise,
+      ] as const).catch(async (err) => {
+        console.warn('📍 High accuracy location failed, falling back to balanced:', err);
+        // Fallback to balanced accuracy
+        return await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 10000,
+          distanceInterval: 25,
+        });
       });
+
+      const location = liveLocation as Location.LocationObject;
       
       console.log('📍 Location obtained:', location.coords);
 
@@ -80,6 +118,19 @@ export class LocationService {
       if (this.currentLocation) {
         console.log('📍 Using last known location as fallback:', this.currentLocation);
         return this.currentLocation;
+      }
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown?.coords) {
+        const coordinates: LocationCoordinates = {
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+          accuracy: lastKnown.coords.accuracy || undefined,
+          altitude: lastKnown.coords.altitude || undefined,
+          heading: lastKnown.coords.heading || undefined,
+          speed: lastKnown.coords.speed || undefined,
+        };
+        this.currentLocation = coordinates;
+        return coordinates;
       }
       
       throw this.handleLocationError(error);

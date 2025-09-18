@@ -4,6 +4,7 @@ import { Text, FAB, Snackbar, Button, SegmentedButtons } from 'react-native-pape
 import { useLocalSearchParams, useFocusEffect, router } from 'expo-router';
 import { ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts, WeatherIcon, TemperatureDisplay, WeatherMap } from '@/components';
 import { NetworkErrorDisplay, ConsistentCard, WeatherSkeleton, UniversalHeader } from '@/components/common';
+import FloatingFAB from '@/components/common/FloatingFAB';
 import { FavoriteLocationCard } from '@/components/location';
 import { useLocation } from '@/hooks';
 import { useOfflineWeather } from '@/hooks/useOfflineWeather';
@@ -1144,11 +1145,11 @@ const WeatherScreen = memo(() => {
             For iOS Simulator: Go to Device → Location → Custom Location and enter coordinates
           </Text>
         </View>
-        <FAB
+        <FloatingFAB
           icon="map-marker"
           label="Enable Location"
           onPress={handleLocationPress}
-          style={styles.fab}
+          testID="floating-fab-enable-location"
         />
       </View>
     );
@@ -1691,11 +1692,12 @@ const WeatherScreen = memo(() => {
 
       {/* Modern FAB - only show when we have weather data */}
       {processedWeatherData && (
-        <FAB
+        <FloatingFAB
           icon="map-marker"
           onPress={handleLocationPress}
-          style={[styles.modernFab, { backgroundColor: theme.colors.primary }]}
+          backgroundColor={theme.colors.primary}
           color={theme.colors.onPrimary}
+          testID="floating-fab-current-location"
         />
       )}
 
@@ -1877,9 +1879,8 @@ const styles = StyleSheet.create({
   // Modern FAB
   modernFab: {
     position: 'absolute',
-    margin: 20,
-    right: 0,
-    bottom: 0,
+    right: 20,
+    bottom: 20,
     borderRadius: 16,
     elevation: 8,
     shadowColor: '#000',
@@ -1893,9 +1894,15 @@ const styles = StyleSheet.create({
   // Legacy FAB
   fab: {
     position: 'absolute',
-    margin: 16,
+    right: 16,
+    bottom: 16,
+  },
+  fabOverlay: {
+    position: 'absolute',
+    top: 0,
     right: 0,
     bottom: 0,
+    left: 0,
   },
   // Forecast toggle
   forecastToggleContainer: {
