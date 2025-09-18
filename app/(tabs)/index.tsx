@@ -230,28 +230,150 @@ const WeatherScreen = memo(() => {
   // Track last coordinates to prevent unnecessary updates
   const lastCoordinatesRef = useRef<{ lat: number; lon: number } | null>(null);
 
+  const loadWeatherData = useCallback(async (location: LocationCoordinates) => {
+    // Prevent multiple simultaneous weather calls
+    if (isLoadingWeather) {
+      if (__DEV__) {
+        console.log('⏳ Weather already loading, skipping duplicate call');
+      }
+      return;
+    }
+    
+    const startTime = performance.now();
+    setIsLoadingWeather(true);
+    
+    try {
+      // Validate location coordinates
+      if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+        throw new Error('Invalid location coordinates provided');
+      }
+      
+      if (location.latitude < -90 || location.latitude > 90 || location.longitude < -180 || location.longitude > 180) {
+        throw new Error('Location coordinates are out of valid range');
+      }
+      
+      // Ensure we're using the most recent locationToUse if available
+      const coordinatesToUse = locationToUse && 
+        Math.abs(locationToUse.latitude - location.latitude) < 0.001 && 
+        Math.abs(locationToUse.longitude - location.longitude) < 0.001 
+        ? locationToUse 
+        : location;
+      
+      if (__DEV__) {
+        console.log('🌤️ Loading weather data for coordinates:', location.latitude, location.longitude);
+        console.trace('🔍 loadWeatherData call stack');
+      }
+      
+      // Use Promise.allSettled to prevent one failure from stopping others
+      const results = await Promise.allSettled([
+        fetchCurrentWeather(coordinatesToUse.latitude, coordinatesToUse.longitude),
+        fetchForecast(coordinatesToUse.latitude, coordinatesToUse.longitude),
+        // Temporarily disable alerts to prevent infinite loop
+        // fetchAlerts(coordinatesToUse.latitude, coordinatesToUse.longitude),
+      ]);
+      
+      // Log any failures but don't throw
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const operation = ['current weather', 'forecast'][index];
+          errorLogger.warn(`Failed to load ${operation}`, 'WeatherScreen', {
+            operation,
+            error: result.reason,
+            location: { latitude: coordinatesToUse.latitude, longitude: coordinatesToUse.longitude }
+          });
+          
+          // Set error state for critical failures
+          if (index === 0 && !currentWeather) { // Current weather is critical
+            setError(`Failed to load weather data: ${result.reason}`);
+          }
+        }
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      errorLogger.error('Error loading weather data', err as Error, 'WeatherScreen', {
+        location: { latitude: location.latitude, longitude: location.longitude },
+        duration: performance.now() - startTime
+      });
+      setError(errorMessage);
+      setSnackbarVisible(true);
+    } finally {
+      setIsLoadingWeather(false);
+      // Only log if it took longer than 100ms
+      const duration = performance.now() - startTime;
+      // if (__DEV__ && duration > 100) {
+      //   errorLogger.info(`Weather data loading took ${duration.toFixed(2)}ms`, 'WeatherScreen', {
+      //     duration,
+      //     location: { latitude: location.latitude, longitude: location.longitude }
+      //   });
+      // }
+    }
+  }, [fetchCurrentWeather, fetchForecast, currentWeather, isLoadingWeather, locationToUse]);
+
   // Auto-fetch weather when location permission is granted (for fresh installs)
   useEffect(() => {
     if (permissionStatus.status === 'granted' && !currentWeather && !isLoading && !isInitializing) {
       console.log('📍 Permission granted, auto-fetching weather data...');
-      handleLocationPress().catch(error => {
-        console.error('📍 Error auto-fetching weather after permission granted:', error);
-      });
+      // Call handleLocationPress directly without dependency
+      const autoFetchLocation = async () => {
+        try {
+          setError(null); // Clear any existing errors
+          const location = await getCurrentLocation();
+          
+          if (!location) {
+            throw new Error('Unable to get current location. Please check your location permissions.');
+          }
+          
+          // Validate location data
+          if (typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
+            throw new Error('Invalid location data received');
+          }
+          
+          // Create a Location object for Redux
+          const locationObj: Location = {
+            id: `current-${location.latitude}-${location.longitude}`,
+            name: 'Current Location',
+            country: '',
+            state: '',
+            latitude: location.latitude,
+            longitude: location.longitude,
+            isCurrent: true,
+            isFavorite: false,
+            searchCount: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          
+          dispatch(setCurrentLocation(locationObj));
+          dispatch(setSelectedLocation(locationObj)); // Also set as selected location so map updates
+          
+          await loadWeatherData(location);
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to get current location';
+          errorLogger.error('Error getting current location', err as Error, 'WeatherScreen', {
+            action: 'getCurrentLocation',
+            errorType: err instanceof Error ? err.constructor.name : 'Unknown'
+          });
+          setError(errorMessage);
+          setSnackbarVisible(true);
+        }
+      };
+      
+      autoFetchLocation();
     }
-  }, [permissionStatus.status, currentWeather, isLoading, isInitializing, handleLocationPress]);
+  }, [permissionStatus.status, currentWeather, isLoading, isInitializing, getCurrentLocation, loadWeatherData, dispatch]);
 
   // Refresh weather when app comes to foreground (with intelligent timing)
   useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
       const now = Date.now();
       
-      if (nextAppState === 'active' && currentWeather && !isLoading) {
+      if (nextAppState === 'active' && currentWeather && !isLoading && locationToUse) {
         // Only refresh if app was in background for more than 5 minutes
         const shouldRefresh = !lastBackgroundTime || (now - lastBackgroundTime) > 5 * 60 * 1000;
         
         if (shouldRefresh) {
           console.log('🔄 App came to foreground, refreshing weather data...');
-          refreshWeather().catch(error => {
+          refreshWeather(locationToUse.latitude, locationToUse.longitude).catch(error => {
             console.error('🔄 Error refreshing weather on app foreground:', error);
           });
         } else {
@@ -270,7 +392,7 @@ const WeatherScreen = memo(() => {
     return () => {
       subscription?.remove();
     };
-  }, [currentWeather, isLoading, refreshWeather, lastBackgroundTime]);
+  }, [currentWeather, isLoading, refreshWeather, lastBackgroundTime, locationToUse]);
 
   // Update WeatherMapsContext when location changes
   useEffect(() => {
@@ -389,84 +511,6 @@ const WeatherScreen = memo(() => {
     warning: { color: theme.colors.warning },
   }), [theme.colors]);
 
-  const loadWeatherData = useCallback(async (location: LocationCoordinates) => {
-    // Prevent multiple simultaneous weather calls
-    if (isLoadingWeather) {
-      if (__DEV__) {
-        console.log('⏳ Weather already loading, skipping duplicate call');
-      }
-      return;
-    }
-    
-    const startTime = performance.now();
-    setIsLoadingWeather(true);
-    
-    try {
-      // Validate location coordinates
-      if (!location || typeof location.latitude !== 'number' || typeof location.longitude !== 'number') {
-        throw new Error('Invalid location coordinates provided');
-      }
-      
-      if (location.latitude < -90 || location.latitude > 90 || location.longitude < -180 || location.longitude > 180) {
-        throw new Error('Location coordinates are out of valid range');
-      }
-      
-      // Ensure we're using the most recent locationToUse if available
-      const coordinatesToUse = locationToUse && 
-        Math.abs(locationToUse.latitude - location.latitude) < 0.001 && 
-        Math.abs(locationToUse.longitude - location.longitude) < 0.001 
-        ? locationToUse 
-        : location;
-      
-      if (__DEV__) {
-        console.log('🌤️ Loading weather data for coordinates:', location.latitude, location.longitude);
-        console.trace('🔍 loadWeatherData call stack');
-      }
-      
-      // Use Promise.allSettled to prevent one failure from stopping others
-      const results = await Promise.allSettled([
-        fetchCurrentWeather(coordinatesToUse.latitude, coordinatesToUse.longitude),
-        fetchForecast(coordinatesToUse.latitude, coordinatesToUse.longitude),
-        // Temporarily disable alerts to prevent infinite loop
-        // fetchAlerts(coordinatesToUse.latitude, coordinatesToUse.longitude),
-      ]);
-      
-      // Log any failures but don't throw
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          const operation = ['current weather', 'forecast'][index];
-          errorLogger.warn(`Failed to load ${operation}`, 'WeatherScreen', {
-            operation,
-            error: result.reason,
-            location: { latitude: coordinatesToUse.latitude, longitude: coordinatesToUse.longitude }
-          });
-          
-          // Set error state for critical failures
-          if (index === 0 && !currentWeather) { // Current weather is critical
-            setError(`Failed to load weather data: ${result.reason}`);
-          }
-        }
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      errorLogger.error('Error loading weather data', err as Error, 'WeatherScreen', {
-        location: { latitude: location.latitude, longitude: location.longitude },
-        duration: performance.now() - startTime
-      });
-      setError(errorMessage);
-      setSnackbarVisible(true);
-    } finally {
-      setIsLoadingWeather(false);
-      // Only log if it took longer than 100ms
-      const duration = performance.now() - startTime;
-      // if (__DEV__ && duration > 100) {
-      //   errorLogger.info(`Weather data loading took ${duration.toFixed(2)}ms`, 'WeatherScreen', {
-      //     duration,
-      //     location: { latitude: location.latitude, longitude: location.longitude }
-      //   });
-      // }
-    }
-  }, [fetchCurrentWeather, fetchForecast, currentWeather, isLoadingWeather]); // Add stable dependencies
 
 
   const handleRefresh = useCallback(async () => {
