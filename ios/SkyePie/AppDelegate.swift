@@ -64,6 +64,11 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
 #if DEBUG
     return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: ".expo/.virtual-metro-entry")
 #else
+    // Try to find the exported bundle
+    if let bundlePath = Bundle.main.path(forResource: "entry-5384b75f2204e56f41ffc6bc41407d0f", ofType: "hbc") {
+      return URL(fileURLWithPath: bundlePath)
+    }
+    // Fallback to main.jsbundle
     return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
   }

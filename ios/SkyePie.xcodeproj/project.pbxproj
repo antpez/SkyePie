@@ -8,13 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		18344B282E7BC2F900B1ED78 /* entry-5384b75f2204e56f41ffc6bc41407d0f.hbc in Resources */ = {isa = PBXBuildFile; fileRef = 18344B272E7BC2F900B1ED78 /* entry-5384b75f2204e56f41ffc6bc41407d0f.hbc */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		BBD4C5C7B24A4E8DB9957C7E /* icon2.icon in Resources */ = {isa = PBXBuildFile; fileRef = 51936F451CBB43A3909F51CD /* icon2.icon */; };
 		D7501800A4C342D8F4D2AC6A /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7714C24BFEE5EE7436034BB9 /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		FA5BFACE9D2A82681FF78959 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3033A2ECA60807A6D6725829 /* PrivacyInfo.xcprivacy */; };
 		FC473A953F434614D8A18CBD /* libPods-SkyePie.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 697415BED1BB8C155A85B4EC /* libPods-SkyePie.a */; };
-		BBD4C5C7B24A4E8DB9957C7E /* icon2.icon in Resources */ = {isa = PBXBuildFile; fileRef = 51936F451CBB43A3909F51CD /* icon2.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,7 +23,9 @@
 		13B07F961A680F5B00A75B9A /* SkyePie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SkyePie.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = SkyePie/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = SkyePie/Info.plist; sourceTree = "<group>"; };
+		18344B272E7BC2F900B1ED78 /* entry-5384b75f2204e56f41ffc6bc41407d0f.hbc */ = {isa = PBXFileReference; lastKnownFileType = file; path = "entry-5384b75f2204e56f41ffc6bc41407d0f.hbc"; sourceTree = "<group>"; };
 		3033A2ECA60807A6D6725829 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = SkyePie/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		51936F451CBB43A3909F51CD /* icon2.icon */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = icon2.icon; path = SkyePie/icon2.icon; sourceTree = "<group>"; };
 		697415BED1BB8C155A85B4EC /* libPods-SkyePie.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SkyePie.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7714C24BFEE5EE7436034BB9 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-SkyePie/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = SkyePie/SplashScreen.storyboard; sourceTree = "<group>"; };
@@ -31,7 +34,6 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = SkyePie/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* SkyePie-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "SkyePie-Bridging-Header.h"; path = "SkyePie/SkyePie-Bridging-Header.h"; sourceTree = "<group>"; };
-		51936F451CBB43A3909F51CD /* icon2.icon */ = {isa = PBXFileReference; name = "icon2.icon"; path = "SkyePie/icon2.icon"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,6 +99,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				18344B272E7BC2F900B1ED78 /* entry-5384b75f2204e56f41ffc6bc41407d0f.hbc */,
 				13B07FAE1A68108700A75B9A /* SkyePie */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
@@ -169,8 +172,8 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
+						DevelopmentTeam = 6NG7KH6C74;
 						LastSwiftMigration = 1250;
-						DevelopmentTeam = "6NG7KH6C74";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -201,6 +204,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
+				18344B282E7BC2F900B1ED78 /* entry-5384b75f2204e56f41ffc6bc41407d0f.hbc in Resources */,
 				FA5BFACE9D2A82681FF78959 /* PrivacyInfo.xcprivacy in Resources */,
 				BBD4C5C7B24A4E8DB9957C7E /* icon2.icon in Resources */,
 			);
@@ -386,7 +390,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = SkyePie/SkyePie.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6NG7KH6C74;
 				ENABLE_BITCODE = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -407,15 +414,12 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.antpez.skyepie;
-				PRODUCT_NAME = "SkyePie";
+				PRODUCT_NAME = SkyePie;
 				SWIFT_OBJC_BRIDGING_HEADER = "SkyePie/SkyePie-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
-				DEVELOPMENT_TEAM = "6NG7KH6C74";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Debug;
 		};
@@ -426,9 +430,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = SkyePie/SkyePie.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				INFOPLIST_FILE = SkyePie/Info.plist;
+				DEVELOPMENT_TEAM = 6NG7KH6C74;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = SkyePie/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -442,14 +449,11 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.antpez.skyepie;
-				PRODUCT_NAME = "SkyePie";
+				PRODUCT_NAME = SkyePie;
 				SWIFT_OBJC_BRIDGING_HEADER = "SkyePie/SkyePie-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
-				DEVELOPMENT_TEAM = "6NG7KH6C74";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Release;
 		};
@@ -457,6 +461,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CLANG_CXX_LIBRARY = "libc++";
@@ -517,7 +522,6 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
 				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				USE_HERMES = true;
-				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 			};
 			name = Debug;
 		};
@@ -525,6 +529,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CLANG_CXX_LIBRARY = "libc++";
@@ -578,7 +583,6 @@
 				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
 				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = icon2;
 			};
 			name = Release;
 		};

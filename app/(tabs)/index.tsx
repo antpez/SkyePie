@@ -16,7 +16,7 @@ import { setSelectedLocation, setCurrentLocation } from '@/store/slices/location
 import { selectSelectedLocation, selectCurrentLocation } from '@/store/selectors';
 import { LocationCoordinates, Location } from '@/types';
 import { APP_CONFIG } from '@/config/app';
-import { offlineCacheService, userService, storageService } from '@/services';
+import { offlineCacheService, userService, storageService, weatherService } from '@/services';
 import { locationRepository } from '@/database/repositories/locationRepository';
 import { formatTemperature, formatWindSpeed, formatHumidity, formatRainfall, formatVisibility, formatTime, formatDayOfWeek } from '@/utils/formatters';
 import { performanceMonitor } from '@/utils/performanceMonitor';
@@ -204,6 +204,9 @@ const WeatherScreen = memo(() => {
 
   // State for location name from reverse geocoding
   const [locationName, setLocationName] = useState<string>('Getting location...');
+  
+  // Memory monitoring
+  const [memoryWarning, setMemoryWarning] = useState(false);
 
   // Get location name when weather data changes
   useEffect(() => {
@@ -218,6 +221,37 @@ const WeatherScreen = memo(() => {
       }
     }
   }, [currentWeather, getLocationName]);
+
+  // Memory monitoring and cleanup
+  useEffect(() => {
+    const memoryCheckInterval = setInterval(() => {
+      if (typeof performance !== 'undefined' && 'memory' in performance) {
+        const memory = (performance as any).memory;
+        const memoryUsage = (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100;
+        
+        if (memoryUsage > 80) {
+          console.warn('⚠️ High memory usage detected:', memoryUsage.toFixed(2) + '%');
+          setMemoryWarning(true);
+          
+          // Clear caches if memory usage is too high
+          if (memoryUsage > 90) {
+            console.log('🧹 Clearing caches due to high memory usage');
+            // Clear weather service cache
+            if (weatherService) {
+              weatherService.clearAllCaches();
+            }
+            // Clear other caches
+            setFavoriteWeatherData({});
+            setMemoryWarning(false);
+          }
+        } else {
+          setMemoryWarning(false);
+        }
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(memoryCheckInterval);
+  }, []);
 
   // Memoized weather data processing
   const processedWeatherData = useMemo(() => {
@@ -806,7 +840,7 @@ const WeatherScreen = memo(() => {
               updatedAt: new Date(),
             };
             
-            
+            console.log('🔍 Processing search params - setting selected location:', locationObj.name, lat, lon);
             dispatch(setSelectedLocation(locationObj));
             
             // Use fastLoadWeather for immediate display with background refresh
@@ -1220,6 +1254,28 @@ const WeatherScreen = memo(() => {
         textColor={theme.colors.onSurface}
       />
       
+      {/* Memory Warning Indicator */}
+      {memoryWarning && (
+        <View style={[styles.memoryWarning, { backgroundColor: theme.colors.warning + '20' }]}>
+          <Text variant="labelSmall" style={[styles.memoryWarningText, { color: theme.colors.warning }]}>
+            High memory usage detected. Tap to clear cache.
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              console.log('🧹 Manual cache clear triggered');
+              weatherService?.clearAllCaches();
+              setFavoriteWeatherData({});
+              setMemoryWarning(false);
+            }}
+            style={[styles.memoryClearButton, { backgroundColor: theme.colors.warning }]}
+          >
+            <Text style={[styles.memoryClearText, { color: theme.colors.onWarning }]}>
+              Clear
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
 
       {/* Modern offline indicator */}
       {isOffline && (
@@ -1561,6 +1617,7 @@ const WeatherScreen = memo(() => {
         {/* Weather Map Section */}
         {locationToUse && isApiKeyConfigured && (
           <View style={styles.weatherMapContainer}>
+            {__DEV__ && console.log('🗺️ Rendering WeatherMap with center:', locationToUse.latitude, locationToUse.longitude, 'selectedLocation:', selectedLocation?.name)}
             <WeatherMap
               key={`weather-map-${locationToUse.latitude}-${locationToUse.longitude}`}
               center={{
@@ -2069,6 +2126,31 @@ const styles = StyleSheet.create({
     marginRight: 0, // No right margin since we reduced card padding
     paddingHorizontal: 2, // Minimal internal padding
     minWidth: 28, // Even smaller minimum width
+  },
+  
+  // Memory warning styles
+  memoryWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+  },
+  memoryWarningText: {
+    flex: 1,
+    marginRight: 12,
+  },
+  memoryClearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  memoryClearText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   
   // Alerts styles (no cards)

@@ -22,6 +22,8 @@ export class WeatherService {
   private config: WeatherApiConfig;
   private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes for faster updates
+  private readonly MAX_CACHE_SIZE = 50; // Limit cache to 50 entries
+  private activeRequests: Map<string, AbortController> = new Map();
 
   constructor(apiKey: string) {
     // Validate API key
@@ -76,10 +78,27 @@ export class WeatherService {
     // Clean up expired cache entries every 2 minutes for better memory management
     setInterval(() => {
       const now = Date.now();
+      const entriesToDelete: string[] = [];
+      
+      // Remove expired entries
       for (const [key, value] of this.cache.entries()) {
         if (now - value.timestamp > value.ttl) {
-          this.cache.delete(key);
+          entriesToDelete.push(key);
         }
+      }
+      
+      // Remove expired entries
+      entriesToDelete.forEach(key => this.cache.delete(key));
+      
+      // If cache is still too large, remove oldest entries
+      if (this.cache.size > this.MAX_CACHE_SIZE) {
+        const sortedEntries = Array.from(this.cache.entries())
+          .sort((a, b) => a[1].timestamp - b[1].timestamp);
+        
+        const toRemove = sortedEntries.slice(0, this.cache.size - this.MAX_CACHE_SIZE);
+        toRemove.forEach(([key]) => this.cache.delete(key));
+        
+        console.log(`🧹 Cache cleanup: Removed ${toRemove.length} old entries`);
       }
     }, 2 * 60 * 1000);
   }
@@ -109,6 +128,29 @@ export class WeatherService {
       timestamp: Date.now(),
       ttl
     });
+  }
+
+  /**
+   * Clear all caches and cancel active requests
+   */
+  clearAllCaches(): void {
+    console.log('🧹 Clearing all weather service caches');
+    this.cache.clear();
+    
+    // Cancel all active requests
+    this.activeRequests.forEach(controller => controller.abort());
+    this.activeRequests.clear();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats(): { size: number; maxSize: number; activeRequests: number } {
+    return {
+      size: this.cache.size,
+      maxSize: this.MAX_CACHE_SIZE,
+      activeRequests: this.activeRequests.size
+    };
   }
 
   private setupInterceptors() {
@@ -152,32 +194,61 @@ export class WeatherService {
         return cachedData;
       }
 
-      const result = await retryHandler.executeWithRetry(
-        async () => {
-          const response: AxiosResponse<CurrentWeather> = await this.api.get('/weather', {
-            params,
-          });
+      // Temporarily disable request cancellation to fix "canceled" error
+      // const requestKey = `weather-${latitude}-${longitude}`;
+      // if (this.activeRequests.has(requestKey)) {
+      //   this.activeRequests.get(requestKey)?.abort();
+      // }
 
-          console.log('🌤️ Weather API response:', {
-            name: response.data.name,
-            coord: response.data.coord,
-            sys: response.data.sys,
-            main: response.data.main
-          });
+      // Create new abort controller for this request
+      // const abortController = new AbortController();
+      // this.activeRequests.set(requestKey, abortController);
 
-          // Cache the result
-          this.setCachedData(cacheKey, response.data);
-          return response.data;
-        },
-        {
-          context: 'WeatherService.getCurrentWeather',
-          onRetry: (attempt, error) => {
-            console.warn(`Retrying getCurrentWeather (attempt ${attempt}):`, error.message);
+      try {
+        const result = await retryHandler.executeWithRetry(
+          async () => {
+            const response: AxiosResponse<CurrentWeather> = await this.api.get('/weather', {
+              params,
+              // signal: abortController.signal, // Temporarily disabled
+            });
+
+            console.log('🌤️ Weather API response:', {
+              name: response.data.name,
+              coord: response.data.coord,
+              sys: response.data.sys,
+              main: response.data.main
+            });
+
+            // Cache the result
+            this.setCachedData(cacheKey, response.data);
+            return response.data;
           },
+          {
+            context: 'WeatherService.getCurrentWeather',
+            onRetry: (attempt, error) => {
+              console.warn(`Retrying getCurrentWeather (attempt ${attempt}):`, error.message);
+            },
+          }
+        );
+        
+        return result;
+      } catch (error: any) {
+        // Handle abort errors gracefully - don't throw them as errors
+        if (error.name === 'AbortError' || error.message?.includes('canceled')) {
+          console.log('🚫 Request was canceled - ignoring');
+          // Return cached data if available, otherwise return null
+          const cachedData = this.getCachedData<CurrentWeather>(cacheKey);
+          if (cachedData) {
+            return cachedData;
+          }
+          // Return a default/fallback weather object instead of throwing
+          throw new Error('Request was canceled');
         }
-      );
-      
-      return result;
+        throw error;
+      } finally {
+        // Clean up the request (temporarily disabled)
+        // this.activeRequests.delete(requestKey);
+      }
     });
   }
 
