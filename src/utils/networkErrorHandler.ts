@@ -19,11 +19,6 @@ export class NetworkErrorHandler {
    * Detects the type of network error from an axios error
    */
   detectErrorType(error: any): NetworkErrorType {
-    // Check for canceled/aborted requests first
-    if (error.name === 'AbortError' || error.message?.includes('canceled') || error.message?.includes('aborted')) {
-      return 'CONNECTION_ERROR'; // Treat as connection error but don't show error UI
-    }
-
     // Check for specific error codes first
     if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
       return 'TIMEOUT_ERROR';

@@ -44,47 +44,14 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(0);
 
-  // Cleanup WebView on unmount to prevent memory leaks
+  // Force refresh when component key changes (new location)
   useEffect(() => {
-    return () => {
-      // Clear any pending timeouts
-      if (webViewRef.current) {
-        webViewRef.current.stopLoading();
-      }
-    };
-  }, []);
-
-  // Force refresh map when key changes (for memory management)
-  useEffect(() => {
-    if (forceRefresh > 0) {
-      console.log('🗺️ Force refreshing map due to significant location change');
-      setMapKey(prev => prev + 1);
-    }
-  }, [forceRefresh]);
-
-  // Memory monitoring for map component
-  useEffect(() => {
-    const memoryCheckInterval = setInterval(() => {
-      if (typeof performance !== 'undefined' && 'memory' in performance) {
-        const memory = (performance as any).memory;
-        const memoryUsage = (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100;
-        
-        if (memoryUsage > 85) {
-          console.warn('🗺️ High memory usage in WeatherMap:', memoryUsage.toFixed(2) + '%');
-          // Force refresh the map to clear memory
-          setMapKey(prev => prev + 1);
-        }
-      }
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(memoryCheckInterval);
-  }, []);
+    setForceRefresh(prev => prev + 1);
+  }, [center.lat, center.lon]);
 
   // Update map when center changes with debouncing
   useEffect(() => {
     if (webViewRef.current && center && !isUpdating) {
-      console.log('🗺️ WeatherMap center changed:', center.lat, center.lon, 'lastCenter:', lastCenter);
-      
       // Check if center actually changed
       const centerChanged = !lastCenter || 
         Math.abs(lastCenter.lat - center.lat) > 0.0001 || 
@@ -95,15 +62,11 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
         Math.abs(lastCenter.lat - center.lat) > 1 || 
         Math.abs(lastCenter.lon - center.lon) > 1;
       
-      console.log('🗺️ Center changed:', centerChanged, 'Significant change:', significantChange);
-      
       if (centerChanged) {
-        console.log('🗺️ Updating map to new center:', center.lat, center.lon);
         setIsUpdating(true);
         setLastCenter({ lat: center.lat, lon: center.lon });
         
         if (significantChange) {
-          console.log('🗺️ Force refreshing map due to significant change');
           setForceRefresh(prev => prev + 1);
         }
         
@@ -649,18 +612,11 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
             setIsMapLoading(false);
           }}
           javaScriptEnabled={true}
-          domStorageEnabled={false}
+          domStorageEnabled={true}
           startInLoadingState={true}
           scalesPageToFit={true}
-          allowsInlineMediaPlayback={false}
-          mediaPlaybackRequiresUserAction={true}
-          cacheEnabled={false}
-          incognito={true}
-          sharedCookiesEnabled={false}
-          thirdPartyCookiesEnabled={false}
-          allowsBackForwardNavigationGestures={false}
-          bounces={false}
-          scrollEnabled={false}
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
         />
       )}
 

@@ -66,12 +66,12 @@ export default {
           NSExceptionDomains: {
             "api.openweathermap.org": {
               NSExceptionAllowsInsecureHTTPLoads: true,
-              NSExceptionMinimumTLSVersion: "TLSv1.2",
+              NSExceptionMinimumTLSVersion: "TLSv1.0",
               NSIncludesSubdomains: true
             },
             "tile.openweathermap.org": {
               NSExceptionAllowsInsecureHTTPLoads: true,
-              NSExceptionMinimumTLSVersion: "TLSv1.2",
+              NSExceptionMinimumTLSVersion: "TLSv1.0",
               NSIncludesSubdomains: true
             }
           }
@@ -93,12 +93,6 @@ export default {
         "expo-runtime-version": getRuntimeVersion(),
         "expo-channel-name": getChannelName(),
         "expo-platform": getCurrentPlatform()
-      },
-      // Configure script phase to avoid warnings
-      ios: {
-        buildConfiguration: {
-          "EXPO_UPDATES_SCRIPT_PHASE_OUTPUTS": "true"
-        }
       }
     },
     // Environment variables for EAS builds

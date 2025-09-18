@@ -16,7 +16,7 @@ import { setSelectedLocation, setCurrentLocation } from '@/store/slices/location
 import { selectSelectedLocation, selectCurrentLocation } from '@/store/selectors';
 import { LocationCoordinates, Location } from '@/types';
 import { APP_CONFIG } from '@/config/app';
-import { offlineCacheService, userService, storageService, weatherService } from '@/services';
+import { offlineCacheService, userService, storageService } from '@/services';
 import { locationRepository } from '@/database/repositories/locationRepository';
 import { formatTemperature, formatWindSpeed, formatHumidity, formatRainfall, formatVisibility, formatTime, formatDayOfWeek } from '@/utils/formatters';
 import { performanceMonitor } from '@/utils/performanceMonitor';
@@ -75,7 +75,7 @@ const WeatherScreen = memo(() => {
   const { units } = useUnits();
   const { preferences: displayPreferences } = useDisplayPreferences();
   const { isInitialized: dbInitialized, isInitializing: dbInitializing, error: dbError } = useDatabase();
-  const { currentLocation, permissionStatus, getCurrentLocation, reverseGeocode } = useLocation();
+  const { currentLocation, permissionStatus, getCurrentLocation } = useLocation();
   const searchParams = useLocalSearchParams();
   const dispatch = useDispatch();
   const selectedLocation = useSelector(selectSelectedLocation);
@@ -159,6 +159,7 @@ const WeatherScreen = memo(() => {
   const [hasProcessedSearchParams, setHasProcessedSearchParams] = useState(false);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   const [isGettingCurrentLocation, setIsGettingCurrentLocation] = useState(false);
+  const [mapRefreshKey, setMapRefreshKey] = useState(0);
 
   // Update ref when fetchCurrentWeather changes
   useEffect(() => {
@@ -192,6 +193,13 @@ const WeatherScreen = memo(() => {
     return currentLocation;
   }, [selectedLocation, reduxCurrentLocation, currentLocation]);
 
+  // Update map refresh key when location changes
+  useEffect(() => {
+    if (locationToUse) {
+      console.log('🗺️ Location changed, updating map refresh key:', locationToUse.latitude, locationToUse.longitude);
+      setMapRefreshKey(prev => prev + 1);
+    }
+  }, [locationToUse?.latitude, locationToUse?.longitude]);
 
   const hasSearchParams = useMemo(() => 
     !!(searchParams.latitude && searchParams.longitude), 
@@ -201,57 +209,6 @@ const WeatherScreen = memo(() => {
     hasSearchParams ? `${searchParams.latitude}-${searchParams.longitude}` : '', 
     [hasSearchParams, searchParams.latitude, searchParams.longitude]
   );
-
-  // State for location name from reverse geocoding
-  const [locationName, setLocationName] = useState<string>('Getting location...');
-  
-  // Memory monitoring
-  const [memoryWarning, setMemoryWarning] = useState(false);
-
-  // Get location name when weather data changes
-  useEffect(() => {
-    if (currentWeather && currentWeather.coord) {
-      if (currentWeather.name && currentWeather.name !== '') {
-        setLocationName(currentWeather.name);
-      } else {
-        // Try to get location name using reverse geocoding
-        getLocationName(currentWeather.coord.lat, currentWeather.coord.lon)
-          .then(name => setLocationName(name))
-          .catch(() => setLocationName('Current Location'));
-      }
-    }
-  }, [currentWeather, getLocationName]);
-
-  // Memory monitoring and cleanup
-  useEffect(() => {
-    const memoryCheckInterval = setInterval(() => {
-      if (typeof performance !== 'undefined' && 'memory' in performance) {
-        const memory = (performance as any).memory;
-        const memoryUsage = (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100;
-        
-        if (memoryUsage > 80) {
-          console.warn('⚠️ High memory usage detected:', memoryUsage.toFixed(2) + '%');
-          setMemoryWarning(true);
-          
-          // Clear caches if memory usage is too high
-          if (memoryUsage > 90) {
-            console.log('🧹 Clearing caches due to high memory usage');
-            // Clear weather service cache
-            if (weatherService) {
-              weatherService.clearAllCaches();
-            }
-            // Clear other caches
-            setFavoriteWeatherData({});
-            setMemoryWarning(false);
-          }
-        } else {
-          setMemoryWarning(false);
-        }
-      }
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(memoryCheckInterval);
-  }, []);
 
   // Memoized weather data processing
   const processedWeatherData = useMemo(() => {
@@ -263,7 +220,7 @@ const WeatherScreen = memo(() => {
     
     // Add safety checks for all object properties
     const processedData = {
-      name: locationName,
+      name: currentWeather.name || 'Unknown Location',
       condition: currentWeather.weather?.[0]?.description || 'Clear sky',
       temperature: currentWeather.main?.temp || 0,
       feelsLike: currentWeather.main?.feels_like || 0,
@@ -279,7 +236,7 @@ const WeatherScreen = memo(() => {
 
 
     return processedData;
-  }, [currentWeather, locationName]);
+  }, [currentWeather]);
 
   // Memoized forecast processing
   const processedForecast = useMemo(() => {
@@ -339,19 +296,6 @@ const WeatherScreen = memo(() => {
     error: { color: theme.colors.error },
     warning: { color: theme.colors.warning },
   }), [theme.colors]);
-
-  // Function to get location name using reverse geocoding
-  const getLocationName = useCallback(async (latitude: number, longitude: number): Promise<string> => {
-    try {
-      console.log('🌍 Getting location name for:', latitude, longitude);
-      const locationName = await reverseGeocode(latitude, longitude);
-      console.log('🌍 Location name obtained:', locationName);
-      return locationName;
-    } catch (error) {
-      console.warn('🌍 Failed to get location name:', error);
-      return 'Current Location';
-    }
-  }, [reverseGeocode]);
 
   const loadWeatherData = useCallback(async (location: LocationCoordinates) => {
     // Prevent multiple simultaneous weather calls
@@ -715,47 +659,40 @@ const WeatherScreen = memo(() => {
           // No saved location, try current location first with timeout
           try {
             console.log('📍 No saved location found, attempting to get current location...');
-            console.log('📍 Permission status:', permissionStatus);
+            // Add timeout to prevent hanging
+            const locationPromise = getCurrentLocation();
+            const timeoutPromise = new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Location timeout')), 15000) // Increased timeout for physical devices
+            );
             
-            // Only try to get location if permission is granted
-            if (permissionStatus.status === 'granted') {
-              // Add timeout to prevent hanging
-              const locationPromise = getCurrentLocation();
-              const timeoutPromise = new Promise<never>((_, reject) => 
-                setTimeout(() => reject(new Error('Location timeout')), 15000) // Increased timeout for physical devices
-              );
+            const location = await Promise.race([locationPromise, timeoutPromise]);
+            console.log('📍 Current location obtained:', location);
+            
+            if (location) {
+              // Create a Location object for Redux
+              const locationObj: Location = {
+                id: `current-${location.latitude}-${location.longitude}`,
+                name: 'Current Location',
+                country: '',
+                state: '',
+                latitude: location.latitude,
+                longitude: location.longitude,
+                isCurrent: true,
+                isFavorite: false,
+                searchCount: 0,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
               
-              const location = await Promise.race([locationPromise, timeoutPromise]);
-              console.log('📍 Current location obtained:', location);
-            
-              if (location) {
-                // Create a Location object for Redux
-                const locationObj: Location = {
-                  id: `current-${location.latitude}-${location.longitude}`,
-                  name: 'Current Location',
-                  country: '',
-                  state: '',
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  isCurrent: true,
-                  isFavorite: false,
-                  searchCount: 0,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                };
-                
-                dispatch(setCurrentLocation(locationObj));
-                dispatch(setSelectedLocation(locationObj)); // Also set as selected location
-                
-                // Try fast initialization first (load cached data immediately)
-                const hasCached = await fastInitialize(location.latitude, location.longitude);
-                setHasCachedData(hasCached);
-                
-                // Then load fresh data in background
-                await loadWeatherData(location);
-              }
-            } else {
-              console.log('📍 Permission not granted, skipping location fetch');
+              dispatch(setCurrentLocation(locationObj));
+              dispatch(setSelectedLocation(locationObj)); // Also set as selected location
+              
+              // Try fast initialization first (load cached data immediately)
+              const hasCached = await fastInitialize(location.latitude, location.longitude);
+              setHasCachedData(hasCached);
+              
+              // Then load fresh data in background
+              await loadWeatherData(location);
             }
           } catch (err) {
             console.warn('📍 Location failed, using fallback:', err);
@@ -840,8 +777,10 @@ const WeatherScreen = memo(() => {
               updatedAt: new Date(),
             };
             
-            console.log('🔍 Processing search params - setting selected location:', locationObj.name, lat, lon);
+            
             dispatch(setSelectedLocation(locationObj));
+            
+            console.log('🗺️ Map should update to:', location.latitude, location.longitude);
             
             // Use fastLoadWeather for immediate display with background refresh
             await fastLoadWeather(location.latitude, location.longitude);
@@ -1219,6 +1158,19 @@ const WeatherScreen = memo(() => {
     );
   }
 
+  // Show loading if we're still initializing and have no weather data
+  if (isInitializing && !currentWeather) {
+    return (
+      <View style={themeStyles.container} key={`initializing-${effectiveTheme}`}>
+        <LoadingSpinner 
+          message="Initializing SkyePie..." 
+          progress={0.5}
+          showProgress={true}
+        />
+      </View>
+    );
+  }
+
   // Show error state with better UX
   if (error && !currentWeather) {
     return (
@@ -1253,28 +1205,6 @@ const WeatherScreen = memo(() => {
         backgroundColor={theme.colors.background}
         textColor={theme.colors.onSurface}
       />
-      
-      {/* Memory Warning Indicator */}
-      {memoryWarning && (
-        <View style={[styles.memoryWarning, { backgroundColor: theme.colors.warning + '20' }]}>
-          <Text variant="labelSmall" style={[styles.memoryWarningText, { color: theme.colors.warning }]}>
-            High memory usage detected. Tap to clear cache.
-          </Text>
-          <TouchableOpacity
-            onPress={() => {
-              console.log('🧹 Manual cache clear triggered');
-              weatherService?.clearAllCaches();
-              setFavoriteWeatherData({});
-              setMemoryWarning(false);
-            }}
-            style={[styles.memoryClearButton, { backgroundColor: theme.colors.warning }]}
-          >
-            <Text style={[styles.memoryClearText, { color: theme.colors.onWarning }]}>
-              Clear
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
       
 
       {/* Modern offline indicator */}
@@ -1617,9 +1547,8 @@ const WeatherScreen = memo(() => {
         {/* Weather Map Section */}
         {locationToUse && isApiKeyConfigured && (
           <View style={styles.weatherMapContainer}>
-            {__DEV__ && console.log('🗺️ Rendering WeatherMap with center:', locationToUse.latitude, locationToUse.longitude, 'selectedLocation:', selectedLocation?.name)}
             <WeatherMap
-              key={`weather-map-${locationToUse.latitude}-${locationToUse.longitude}`}
+              key={`weather-map-${locationToUse.latitude}-${locationToUse.longitude}-${mapRefreshKey}`}
               center={{
                 lat: locationToUse.latitude,
                 lon: locationToUse.longitude,
@@ -1709,13 +1638,15 @@ const WeatherScreen = memo(() => {
         )}
       </ScrollView>
 
-      {/* Modern FAB */}
-      <FAB
-        icon="map-marker"
-        onPress={handleLocationPress}
-        style={[styles.modernFab, { backgroundColor: theme.colors.primary }]}
-        color={theme.colors.onPrimary}
-      />
+      {/* Modern FAB - only show when we have weather data */}
+      {processedWeatherData && (
+        <FAB
+          icon="map-marker"
+          onPress={handleLocationPress}
+          style={[styles.modernFab, { backgroundColor: theme.colors.primary }]}
+          color={theme.colors.onPrimary}
+        />
+      )}
 
       <Snackbar
         visible={snackbarVisible}
@@ -2126,31 +2057,6 @@ const styles = StyleSheet.create({
     marginRight: 0, // No right margin since we reduced card padding
     paddingHorizontal: 2, // Minimal internal padding
     minWidth: 28, // Even smaller minimum width
-  },
-  
-  // Memory warning styles
-  memoryWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 8,
-  },
-  memoryWarningText: {
-    flex: 1,
-    marginRight: 12,
-  },
-  memoryClearButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  memoryClearText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   
   // Alerts styles (no cards)

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as Location from 'expo-location';
 import { LocationCoordinates, LocationPermissionStatus, LocationError } from '../types';
 import { locationService } from '../services';
 
@@ -85,17 +84,8 @@ export const useLocation = () => {
   useEffect(() => {
     const checkPermissionStatus = async () => {
       try {
-        console.log('🔍 Checking initial permission status...');
-        const { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
-        console.log('🔍 Initial permission status:', status, 'canAskAgain:', canAskAgain);
-        
-        const permissionStatus: LocationPermissionStatus = {
-          granted: status === 'granted',
-          canAskAgain: canAskAgain,
-          status: status as 'granted' | 'denied' | 'undetermined',
-        };
-        
-        setPermissionStatus(permissionStatus);
+        const status = await locationService.requestLocationPermission();
+        setPermissionStatus(status);
       } catch (err) {
         console.error('Error checking permission status:', err);
       }

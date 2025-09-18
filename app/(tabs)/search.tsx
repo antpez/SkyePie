@@ -128,8 +128,6 @@ export default function SearchScreen() {
     }
 
     try {
-      console.log('🔍 Location selected from search:', location.name, location.latitude, location.longitude);
-      
       // Try multiple navigation methods
       const navigationParams = {
         latitude: location.latitude.toString(),
@@ -142,13 +140,10 @@ export default function SearchScreen() {
       // Method 1: Try using href format
       const href = `/(tabs)/?latitude=${navigationParams.latitude}&longitude=${navigationParams.longitude}&name=${encodeURIComponent(navigationParams.name)}&country=${encodeURIComponent(navigationParams.country)}&state=${encodeURIComponent(navigationParams.state)}`;
       
-      console.log('🔍 Navigating to:', href);
-      
       try {
         navigation.replace(href);
         return;
       } catch (replaceError) {
-        console.log('🔍 Replace failed, trying push:', replaceError);
         // Fallback to push if replace fails
         navigation.push(href);
       }
