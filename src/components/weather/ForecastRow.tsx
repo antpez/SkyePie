@@ -58,7 +58,7 @@ export const ForecastRow: React.FC<ForecastRowProps> = memo(({
   }, {} as Record<string, any>);
 
   // Sort by date to ensure proper order
-  const forecastItems = Object.values(dailyForecast)
+  const forecastItems = (Object.values(dailyForecast) || [])
     .sort((a, b) => a.originalDate.getTime() - b.originalDate.getTime())
     .slice(0, 7);
 

@@ -217,7 +217,7 @@ export class WeatherService {
         timeout: this.config.timeout,
       });
 
-      const results = response.data.map((item: any) => ({
+      const results = (response.data || []).map((item: any) => ({
         name: item.name,
         country: item.country,
         state: item.state,
@@ -227,7 +227,7 @@ export class WeatherService {
       }));
 
       // Sort results by relevance (exact matches first, then by name length)
-      return results.sort((a: LocationSearchResult, b: LocationSearchResult) => {
+      return (results || []).sort((a: LocationSearchResult, b: LocationSearchResult) => {
         const aName = a.name.toLowerCase();
         const bName = b.name.toLowerCase();
         const queryLower = query.toLowerCase();
@@ -269,7 +269,7 @@ export class WeatherService {
         timeout: this.config.timeout,
       });
 
-      return response.data.map((item: any) => ({
+      return (response.data || []).map((item: any) => ({
         name: item.name,
         country: item.country,
         state: item.state,

@@ -47,7 +47,7 @@ export function WeatherMapsProvider({ children }: WeatherMapsProviderProps) {
       if (savedConfig) {
         // Check if the saved config has old layer data with opacity sliders
         // If any layer has opacity < 1.0, it's old data and we should use defaults
-        const hasOldOpacityData = savedConfig.layers?.some(layer => layer.opacity < 1.0);
+        const hasOldOpacityData = (savedConfig.layers || []).some(layer => layer.opacity < 1.0);
         
         if (hasOldOpacityData) {
           // console.log('Detected old layer data with opacity sliders, using new defaults');
@@ -95,7 +95,7 @@ export function WeatherMapsProvider({ children }: WeatherMapsProviderProps) {
 
   // Toggle layer visibility
   const toggleLayer = useCallback(async (layerId: string, visible: boolean) => {
-    const newLayers = config.layers.map(layer =>
+    const newLayers = (config.layers || []).map(layer =>
       layer.id === layerId ? { ...layer, visible } : layer
     );
     
@@ -109,7 +109,7 @@ export function WeatherMapsProvider({ children }: WeatherMapsProviderProps) {
   // Update layer opacity
   const updateLayerOpacity = useCallback(async (layerId: string, opacity: number) => {
     const clampedOpacity = Math.max(0, Math.min(1, opacity));
-    const newLayers = config.layers.map(layer =>
+    const newLayers = (config.layers || []).map(layer =>
       layer.id === layerId ? { ...layer, opacity: clampedOpacity } : layer
     );
     

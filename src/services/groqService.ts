@@ -150,7 +150,7 @@ export class GroqService {
 
     const prompt = `Weather: ${weather.main.temp}°C, ${weather.weather[0]?.main || 'clear'}, humidity ${weather.main.humidity}%, wind ${weather.wind.speed} m/s
     User preferences: ${userPrefs.clothingStyle} style, ${userPrefs.weatherSensitivity} sensitivity
-    Forecast: ${forecast.list.slice(0, 3).map(item => `${item.main.temp}°C ${item.weather[0]?.main || 'clear'}`).join(', ')}
+    Forecast: ${(forecast?.list || []).slice(0, 3).map(item => `${item.main.temp}°C ${item.weather[0]?.main || 'clear'}`).join(', ')}
     
     Provide 5-8 specific clothing recommendations for this weather.`;
 

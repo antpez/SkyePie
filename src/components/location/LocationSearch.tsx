@@ -186,7 +186,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = memo(({
                 )}
               </View>
               <View style={styles.historyContainer}>
-                {searchHistory.slice(0, 5).map((item) => (
+                {(searchHistory || []).slice(0, 5).map((item) => (
                   <View key={item.id} style={[styles.historyItem, { backgroundColor: theme.colors.surfaceVariant }]}>
                     <List.Item
                       title={item.query}

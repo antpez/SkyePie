@@ -268,8 +268,8 @@ const WeatherScreen = memo(() => {
     });
     
     return {
-      hourly: forecast.list.slice(0, 4),
-      daily: futureDays.slice(0, 6) // Take up to 6 days starting from tomorrow
+      hourly: (forecast?.list || []).slice(0, 4),
+      daily: (futureDays || []).slice(0, 6) // Take up to 6 days starting from tomorrow
     };
   }, [forecast]);
 
@@ -504,7 +504,7 @@ const WeatherScreen = memo(() => {
       const weatherData: Record<string, any> = {};
       
       // Create all weather requests at once
-      const weatherPromises = favorites.map(async (location) => {
+      const weatherPromises = (favorites || []).map(async (location) => {
         try {
           const weather = await fetchCurrentWeatherRef.current(location.latitude, location.longitude);
           return { locationId: location.id, weather };
@@ -521,7 +521,7 @@ const WeatherScreen = memo(() => {
       const weatherResults = await Promise.allSettled(weatherPromises);
       
       // Process results
-      weatherResults.forEach((result) => {
+      (weatherResults || []).forEach((result) => {
         if (result.status === 'fulfilled' && result.value.weather) {
           weatherData[result.value.locationId] = result.value.weather;
         }
