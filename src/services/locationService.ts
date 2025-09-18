@@ -36,12 +36,14 @@ export class LocationService {
       // First check if we already have permission
       let { status } = await Location.getForegroundPermissionsAsync();
       
+      console.log('📍 Current permission status:', status);
+      
       // If permission is not granted, try to request it
       if (status !== 'granted') {
-        // if (__DEV__) {
-        //   console.log('Location permission not granted, requesting permission...');
-        // }
+        console.log('📍 Location permission not granted, requesting permission...');
         const permissionResult = await this.requestLocationPermission();
+        
+        console.log('📍 Permission request result:', permissionResult);
         
         if (!permissionResult.granted) {
           throw new Error('Location permission denied by user');
@@ -50,12 +52,15 @@ export class LocationService {
         // Permission is now granted, we can proceed
       }
 
+      console.log('📍 Attempting to get current position...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
-        timeInterval: 5000, // Reduced from 10000ms to 5000ms
+        timeInterval: 10000, // Increased timeout for physical devices
         distanceInterval: 10,
         // maximumAge is not part of LocationOptions in expo-location@19
       });
+      
+      console.log('📍 Location obtained:', location.coords);
 
       const coordinates: LocationCoordinates = {
         latitude: location.coords.latitude,
@@ -70,6 +75,13 @@ export class LocationService {
       return coordinates;
     } catch (error) {
       console.error('Error getting current location:', error);
+      
+      // Try to get last known location as fallback
+      if (this.currentLocation) {
+        console.log('📍 Using last known location as fallback:', this.currentLocation);
+        return this.currentLocation;
+      }
+      
       throw this.handleLocationError(error);
     }
   }

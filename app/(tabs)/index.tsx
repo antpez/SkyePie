@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Text, FAB, Snackbar, Button, SegmentedButtons } from 'react-native-paper';
-import { useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect, router } from 'expo-router';
 import { ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts, WeatherIcon, TemperatureDisplay, WeatherMap } from '@/components';
 import { NetworkErrorDisplay, ConsistentCard, WeatherSkeleton, UniversalHeader } from '@/components/common';
 import { FavoriteLocationCard } from '@/components/location';
@@ -650,15 +650,15 @@ const WeatherScreen = memo(() => {
         } else {
           // No saved location, try current location first with timeout
           try {
-            console.log('No saved location found, attempting to get current location...');
+            console.log('📍 No saved location found, attempting to get current location...');
             // Add timeout to prevent hanging
             const locationPromise = getCurrentLocation();
             const timeoutPromise = new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Location timeout')), 5000)
+              setTimeout(() => reject(new Error('Location timeout')), 15000) // Increased timeout for physical devices
             );
             
             const location = await Promise.race([locationPromise, timeoutPromise]);
-            console.log('Current location obtained:', location);
+            console.log('📍 Current location obtained:', location);
             
             if (location) {
               // Create a Location object for Redux
@@ -687,7 +687,7 @@ const WeatherScreen = memo(() => {
               await loadWeatherData(location);
             }
           } catch (err) {
-            console.warn('Location failed, using fallback:', err);
+            console.warn('📍 Location failed, using fallback:', err);
             // Use a fallback location (London) for testing
             const fallbackLocation: LocationCoordinates = {
               latitude: 51.5074,
@@ -1088,6 +1088,39 @@ const WeatherScreen = memo(() => {
             onPress={handleLocationPress}
             style={styles.fab}
           />
+        </View>
+      </View>
+    );
+  }
+
+  // Show location error screen if we have permission but no weather data
+  if (permissionStatus.status === 'granted' && !currentWeather && !isLoading && !isInitializing) {
+    return (
+      <View style={themeStyles.container} key={`location-error-${effectiveTheme}`}>
+        <View style={styles.permissionContainer}>
+          <Text variant="headlineSmall" style={[styles.permissionTitle, themeStyles.onSurface]}>
+            Location Error
+          </Text>
+          <Text variant="bodyLarge" style={[styles.permissionMessage, themeStyles.onSurface]}>
+            Unable to get your current location. This might be due to poor GPS signal or network issues.
+          </Text>
+          <Text variant="bodyMedium" style={[styles.permissionSubtext, themeStyles.onSurfaceVariant]}>
+            Try again or search for a location manually.
+          </Text>
+          <View style={styles.buttonContainer}>
+            <FAB
+              icon="map-marker"
+              label="Try Again"
+              onPress={handleLocationPress}
+              style={[styles.fab, { marginBottom: 12 }]}
+            />
+            <FAB
+              icon="magnify"
+              label="Search Location"
+              onPress={() => router.push('/search')}
+              style={styles.fab}
+            />
+          </View>
         </View>
       </View>
     );
@@ -1689,6 +1722,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+  },
+  buttonContainer: {
+    width: '100%',
+    alignItems: 'center',
   },
   permissionTitle: {
     textAlign: 'center',
