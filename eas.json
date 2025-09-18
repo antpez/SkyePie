@@ -25,7 +25,7 @@
       "android": {
         "buildType": "apk"
       }
-    },
+    }, 
     "production": {
       "autoIncrement": true,
       "node": "22.17.1",
