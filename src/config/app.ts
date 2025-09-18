@@ -1,5 +1,20 @@
 // Load environment variables
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+// Debug API key loading
+const debugApiKey = () => {
+  if (__DEV__) {
+    console.log('🔑 API Key Debug Info:');
+    console.log('  - Platform:', Platform.OS);
+    console.log('  - process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY:', process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY ? 'SET' : 'NOT SET');
+    console.log('  - Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENWEATHER_API_KEY:', Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENWEATHER_API_KEY ? 'SET' : 'NOT SET');
+    console.log('  - Constants.expoConfig exists:', !!Constants.expoConfig);
+    console.log('  - Constants.expoConfig.extra exists:', !!Constants.expoConfig?.extra);
+  }
+};
+
+debugApiKey();
 
 export const APP_CONFIG = {
   name: 'SkyePie',

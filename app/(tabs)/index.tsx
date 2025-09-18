@@ -239,7 +239,7 @@ const WeatherScreen = memo(() => {
     today.setHours(0, 0, 0, 0);
     
     // Process all forecast data and group by day
-    const dailyData = forecast.list.reduce((acc, item) => {
+    const dailyData = (forecast?.list || []).reduce((acc, item) => {
       const date = new Date(item.dt * 1000);
       const dayKey = date.toDateString();
       
@@ -261,7 +261,7 @@ const WeatherScreen = memo(() => {
     
     // Get all days and filter out today, then take up to 6 days
     const allDays = Object.values(dailyData).sort((a, b) => a.originalDate.getTime() - b.originalDate.getTime());
-    const futureDays = allDays.filter(day => {
+    const futureDays = (allDays || []).filter(day => {
       const dayDate = new Date(day.originalDate);
       dayDate.setHours(0, 0, 0, 0);
       return dayDate > today;

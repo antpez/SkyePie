@@ -59,7 +59,23 @@ export default {
         usesNonExemptEncryption: false,
       },
       infoPlist: {
-        UIAppFonts: []
+        UIAppFonts: [],
+        NSAppTransportSecurity: {
+          NSAllowsArbitraryLoads: true,
+          NSAllowsLocalNetworking: true,
+          NSExceptionDomains: {
+            "api.openweathermap.org": {
+              NSExceptionAllowsInsecureHTTPLoads: true,
+              NSExceptionMinimumTLSVersion: "TLSv1.0",
+              NSIncludesSubdomains: true
+            },
+            "tile.openweathermap.org": {
+              NSExceptionAllowsInsecureHTTPLoads: true,
+              NSExceptionMinimumTLSVersion: "TLSv1.0",
+              NSIncludesSubdomains: true
+            }
+          }
+        }
       }
     },
     android: {

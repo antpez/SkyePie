@@ -21,7 +21,7 @@ export const HourlyForecast: React.FC<HourlyForecastProps> = memo(({
 
   // Filter to show next 24 hours (8 items since we get 3-hour intervals)
   const next24Hours = useMemo(() => {
-    return forecast.slice(0, 8);
+    return (forecast || []).slice(0, 8);
   }, [forecast]);
 
   // Memoize processed forecast items to prevent recalculation

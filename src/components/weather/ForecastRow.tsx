@@ -34,7 +34,7 @@ export const ForecastRow: React.FC<ForecastRowProps> = memo(({
   ], [theme.colors.onSurfaceVariant, effectiveTheme]);
 
   // Group forecast by day and calculate daily high/low temperatures
-  const dailyForecast = forecast.reduce((acc, item) => {
+  const dailyForecast = (forecast || []).reduce((acc, item) => {
     const date = new Date(item.dt * 1000);
     const dayKey = date.toDateString();
     
