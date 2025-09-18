@@ -75,7 +75,9 @@ export default {
               NSIncludesSubdomains: true
             }
           }
-        }
+        },
+        NSLocationWhenInUseUsageDescription: "SkyePie uses your location to show local weather for your area.",
+        NSLocationUsageDescription: "SkyePie needs location access to provide accurate weather information near you."
       }
     },
     android: {
@@ -84,7 +86,11 @@ export default {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
-      fonts: []
+      fonts: [],
+      permissions: [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     updates: {
       url: "https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa",

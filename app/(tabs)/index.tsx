@@ -1143,13 +1143,13 @@ const WeatherScreen = memo(() => {
           <Text variant="bodyMedium" style={[styles.permissionSubtext, themeStyles.onSurfaceVariant]}>
             For iOS Simulator: Go to Device → Location → Custom Location and enter coordinates
           </Text>
-          <FAB
-            icon="map-marker"
-            label="Enable Location"
-            onPress={handleLocationPress}
-            style={styles.fab}
-          />
         </View>
+        <FAB
+          icon="map-marker"
+          label="Enable Location"
+          onPress={handleLocationPress}
+          style={styles.fab}
+        />
       </View>
     );
   }
