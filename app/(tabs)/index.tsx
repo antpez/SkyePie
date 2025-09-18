@@ -229,6 +229,16 @@ const WeatherScreen = memo(() => {
   // Track last coordinates to prevent unnecessary updates
   const lastCoordinatesRef = useRef<{ lat: number; lon: number } | null>(null);
 
+  // Auto-fetch weather when location permission is granted (for fresh installs)
+  useEffect(() => {
+    if (permissionStatus.status === 'granted' && !currentWeather && !isLoading && !isInitializing) {
+      console.log('📍 Permission granted, auto-fetching weather data...');
+      handleLocationPress().catch(error => {
+        console.error('📍 Error auto-fetching weather after permission granted:', error);
+      });
+    }
+  }, [permissionStatus.status, currentWeather, isLoading, isInitializing, handleLocationPress]);
+
   // Update WeatherMapsContext when location changes
   useEffect(() => {
     if (locationToUse) {
