@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Animated, LayoutAnimation, Platform, UIManager, AppState } from 'react-native';
 import { Text, FAB, Snackbar, Button, SegmentedButtons } from 'react-native-paper';
 import { useLocalSearchParams, useFocusEffect, router } from 'expo-router';
 import { ForecastRow, HourlyForecast, LoadingSpinner, WeatherAlerts, WeatherIcon, TemperatureDisplay, WeatherMap } from '@/components';
@@ -24,6 +24,7 @@ import { formatTemperature, formatWindSpeed, formatHumidity, formatRainfall, for
 import { performanceMonitor } from '@/utils/performanceMonitor';
 import { errorLogger } from '@/utils/errorLogger';
 import '@/config/performance'; // Initialize performance monitoring
+import '@/utils/launchOptimizer'; // Initialize launch optimizations
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -84,21 +85,12 @@ const WeatherScreen = memo(() => {
   const selectedLocation = useSelector(selectSelectedLocation);
   const reduxCurrentLocation = useSelector(selectCurrentLocation);
   
-  // Debug selectedLocation state (reduced logging)
+  // Debug selectedLocation state (disabled for production)
   // useEffect(() => {
   //   if (__DEV__ && selectedLocation) {
   //     console.log('Selected location changed:', selectedLocation.name);
   //   }
   // }, [selectedLocation]);
-  
-  // Debug Redux state (commented out for production)
-  // useEffect(() => {
-  //   console.log('Redux selectedLocation changed:', selectedLocation?.name || 'none');
-  // }, [selectedLocation]);
-  
-  // useEffect(() => {
-  //   console.log('Redux currentLocation changed:', reduxCurrentLocation?.name || 'none');
-  // }, [reduxCurrentLocation]);
   
   // Get API key from config - memoized to prevent recreation
   const API_KEY = useMemo(() => APP_CONFIG.api.openWeatherMap.apiKey, []);
@@ -134,6 +126,7 @@ const WeatherScreen = memo(() => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [hasCachedData, setHasCachedData] = useState(false);
   const [showHourlyForecast, setShowHourlyForecast] = useState(true);
+  const [lastBackgroundTime, setLastBackgroundTime] = useState<number | null>(null);
   
   // Animation for forecast toggle
   const handleForecastToggle = useCallback((value: string) => {
@@ -172,7 +165,9 @@ const WeatherScreen = memo(() => {
   // Memoized values for performance - optimized dependencies
   const locationToUse = useMemo(() => {
     if (selectedLocation) {
-      console.log('📍 Using selected location for weather and map:', selectedLocation.name, selectedLocation.latitude, selectedLocation.longitude);
+      if (__DEV__) {
+        console.log('📍 Using selected location for weather and map:', selectedLocation.name, selectedLocation.latitude, selectedLocation.longitude);
+      }
       return {
         latitude: selectedLocation.latitude,
         longitude: selectedLocation.longitude,
@@ -180,27 +175,33 @@ const WeatherScreen = memo(() => {
     }
     // Use Redux current location if available, otherwise fall back to hook's current location
     if (reduxCurrentLocation) {
-      console.log('📍 Using Redux current location for weather and map:', reduxCurrentLocation.name, reduxCurrentLocation.latitude, reduxCurrentLocation.longitude);
+      if (__DEV__) {
+        console.log('📍 Using Redux current location for weather and map:', reduxCurrentLocation.name, reduxCurrentLocation.latitude, reduxCurrentLocation.longitude);
+      }
       return {
         latitude: reduxCurrentLocation.latitude,
         longitude: reduxCurrentLocation.longitude,
       };
     }
-    console.log('📍 Using hook current location for weather and map:', currentLocation?.latitude, currentLocation?.longitude);
+    if (__DEV__) {
+      console.log('📍 Using hook current location for weather and map:', currentLocation?.latitude, currentLocation?.longitude);
+    }
     return currentLocation;
   }, [selectedLocation, reduxCurrentLocation, currentLocation]);
 
   // Update map refresh key when location changes
   useEffect(() => {
     if (locationToUse) {
-      console.log('🗺️ Location changed, updating map refresh key:', locationToUse.latitude, locationToUse.longitude);
+      if (__DEV__) {
+        console.log('🗺️ Location changed, updating map refresh key:', locationToUse.latitude, locationToUse.longitude);
+      }
       setMapRefreshKey(prev => prev + 1);
     }
   }, [locationToUse?.latitude, locationToUse?.longitude]);
 
-  // Log weather data when it changes
+  // Log weather data when it changes (development only)
   useEffect(() => {
-    if (currentWeather) {
+    if (currentWeather && __DEV__) {
       console.log('🌤️ Weather data loaded for location:', {
         location: locationToUse,
         weather: {
@@ -238,6 +239,38 @@ const WeatherScreen = memo(() => {
       });
     }
   }, [permissionStatus.status, currentWeather, isLoading, isInitializing, handleLocationPress]);
+
+  // Refresh weather when app comes to foreground (with intelligent timing)
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      const now = Date.now();
+      
+      if (nextAppState === 'active' && currentWeather && !isLoading) {
+        // Only refresh if app was in background for more than 5 minutes
+        const shouldRefresh = !lastBackgroundTime || (now - lastBackgroundTime) > 5 * 60 * 1000;
+        
+        if (shouldRefresh) {
+          console.log('🔄 App came to foreground, refreshing weather data...');
+          refreshWeather().catch(error => {
+            console.error('🔄 Error refreshing weather on app foreground:', error);
+          });
+        } else {
+          console.log('🔄 App came to foreground, skipping refresh (too recent)');
+        }
+        
+        setLastBackgroundTime(null);
+      } else if (nextAppState === 'background') {
+        setLastBackgroundTime(now);
+        console.log('🔄 App went to background');
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    return () => {
+      subscription?.remove();
+    };
+  }, [currentWeather, isLoading, refreshWeather, lastBackgroundTime]);
 
   // Update WeatherMapsContext when location changes
   useEffect(() => {

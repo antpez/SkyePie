@@ -37,6 +37,10 @@
         "buildType": "app-bundle",
         "gradleCommand": ":app:bundleRelease",
         "credentialsSource": "local"
+      },
+      "env": {
+        "NODE_ENV": "production",
+        "EXPO_PUBLIC_ENV": "production"
       }
     }
   },

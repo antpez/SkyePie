@@ -111,6 +111,9 @@ export default {
       EXPO_PUBLIC_OPENWEATHER_API_KEY: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || process.env.OPENWEATHERMAP_API_KEY || 'demo',
       openWeatherMapWeatherMapsEnabled: true,
       openWeatherMapFreeTierLimit: 1000, // calls per day
+      // Performance optimizations
+      performanceOptimizations: true,
+      productionMode: process.env.NODE_ENV === 'production',
     }
   }
 };

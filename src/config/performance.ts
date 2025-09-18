@@ -7,8 +7,8 @@ export const configurePerformanceLogging = () => {
   performanceMonitor.setLogLevel('slow'); // Only log slow operations by default
   
   // Set threshold for what's considered "slow" (in milliseconds)
-  // Lowered from 100ms to 50ms for better visibility
-  performanceMonitor.setLogThreshold(50); // Log operations taking more than 50ms
+  // Optimized for production launch - only log truly slow operations
+  performanceMonitor.setLogThreshold(200); // Log operations taking more than 200ms
   
   // You can also disable logging completely in production
   if (__DEV__) {
