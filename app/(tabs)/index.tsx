@@ -1094,14 +1094,14 @@ const WeatherScreen = memo(() => {
           <Text variant="bodyMedium" style={[styles.permissionSubtext, themeStyles.onSurfaceVariant]}>
             Please restart the app to try again.
           </Text>
-          <FAB
+          <FloatingFAB
             icon="refresh"
             label="Restart App"
             onPress={() => {
               const { router } = require('expo-router');
               router.replace('/(tabs)/');
             }}
-            style={styles.fab}
+            testID="floating-fab-restart-app"
           />
         </View>
       </View>
@@ -1169,20 +1169,13 @@ const WeatherScreen = memo(() => {
           <Text variant="bodyMedium" style={[styles.permissionSubtext, themeStyles.onSurfaceVariant]}>
             Try again or search for a location manually.
           </Text>
-          <View style={styles.buttonContainer}>
-            <FAB
-              icon="map-marker"
-              label="Try Again"
-              onPress={handleLocationPress}
-              style={[styles.fab, { marginBottom: 12 }]}
-            />
-            <FAB
-              icon="magnify"
-              label="Search Location"
-              onPress={() => router.push('/search')}
-              style={styles.fab}
-            />
-          </View>
+          {/* Use floating FAB so it appears bottom-right consistently on Android/iOS */}
+          <FloatingFAB
+            icon="magnify"
+            label="Search Location"
+            onPress={() => router.push('/search')}
+            testID="floating-fab-search-location"
+          />
         </View>
       </View>
     );
@@ -1237,11 +1230,11 @@ const WeatherScreen = memo(() => {
           <Text variant="bodyMedium" style={[styles.errorSubtext, themeStyles.onSurfaceVariant]}>
             Check your internet connection and try again.
           </Text>
-          <FAB
+          <FloatingFAB
             icon="refresh"
             label="Try Again"
             onPress={handleLocationPress}
-            style={styles.fab}
+            testID="floating-fab-try-again"
           />
         </View>
       </View>
