@@ -4,6 +4,7 @@ import { Text } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { formatTemperature, getThemeAwareTemperatureColor } from '../../utils/formatters';
 import { TemperatureUnit } from '../../types';
+import { typography } from '../../styles/typography';
 
 interface TemperatureDisplayProps {
   temperature: number;
@@ -70,19 +71,47 @@ export const TemperatureDisplay: React.FC<TemperatureDisplayProps> = memo(({
     }
   }, [color, sunrise, sunset, timezone, temperature, unit, effectiveTheme]);
 
-  // Memoize size styles
+  // Memoize size styles with platform-specific fonts
   const sizeStyles = useMemo(() => {
+    const baseFontFamily = typography.displayLarge.fontFamily;
+    const baseFontWeight = typography.displayLarge.fontWeight;
+    
     switch (size) {
       case 'small':
-        return { fontSize: 24, lineHeight: 28 };
+        return { 
+          fontSize: 24, 
+          lineHeight: 28,
+          fontFamily: baseFontFamily,
+          fontWeight: baseFontWeight,
+        };
       case 'medium':
-        return { fontSize: 32, lineHeight: 36 };
+        return { 
+          fontSize: 32, 
+          lineHeight: 36,
+          fontFamily: baseFontFamily,
+          fontWeight: baseFontWeight,
+        };
       case 'large':
-        return { fontSize: 48, lineHeight: 52 };
+        return { 
+          fontSize: 48, 
+          lineHeight: 52,
+          fontFamily: baseFontFamily,
+          fontWeight: baseFontWeight,
+        };
       case 'xlarge':
-        return { fontSize: 64, lineHeight: 68 };
+        return { 
+          fontSize: 64, 
+          lineHeight: 68,
+          fontFamily: baseFontFamily,
+          fontWeight: baseFontWeight,
+        };
       default:
-        return { fontSize: 48, lineHeight: 52 };
+        return { 
+          fontSize: 48, 
+          lineHeight: 52,
+          fontFamily: baseFontFamily,
+          fontWeight: baseFontWeight,
+        };
     }
   }, [size]);
 
@@ -115,7 +144,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   temperature: {
-    fontWeight: '300',
     textAlign: 'center',
+    // Font family and weight are now handled in sizeStyles
   },
 });

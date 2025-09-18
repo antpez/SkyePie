@@ -8,7 +8,8 @@ import { useAccessibilityContext } from '../../contexts/AccessibilityContext';
 import { CurrentWeather } from '../../types';
 import { WeatherIcon } from './WeatherIcon';
 import { TemperatureDisplay } from './TemperatureDisplay';
-import { formatTemperature, formatWindSpeed, formatHumidity, formatPressure, formatVisibility, formatTime } from '../../utils/formatters';
+import { formatTemperature, formatWindSpeed, formatHumidity, formatRainfall, formatVisibility, formatTime } from '../../utils/formatters';
+import { typography } from '../../styles/typography';
 import { performanceMonitor } from '../../utils/performanceMonitor';
 
 interface WeatherCardProps {
@@ -57,12 +58,12 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
   const formattedValues = useMemo(() => ({
     humidity: formatHumidity(weatherData.main.humidity),
     windSpeed: formatWindSpeed(weatherData.wind.speed, units.windSpeed),
-    pressure: formatPressure(weatherData.main.pressure, units.pressure),
+    rainfall: weather.rain?.['1h'] ? formatRainfall(weather.rain['1h'], units.rainfall) : '0 mm',
     visibility: formatVisibility(weatherData.visibility, units.distance),
     sunrise: weatherData.sys.sunrise ? formatTime(weatherData.sys.sunrise, weatherData.timezone) : 'N/A',
     sunset: weatherData.sys.sunset ? formatTime(weatherData.sys.sunset, weatherData.timezone) : 'N/A',
     feelsLike: formatTemperature(weatherData.main.feels_like, units.temperature)
-  }), [weatherData, units]);
+  }), [weatherData, units, weather.rain]);
 
   // Memoize accessibility settings to prevent recalculation
   const accessibilitySettings = useMemo(() => ({
@@ -207,11 +208,11 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
                 </View>
               )}
               
-              {displayPreferences.showPressure && (
+              {displayPreferences.showRainfall && (
                 <View 
                   style={styles.detailItem}
                   accessible={true}
-                  accessibilityLabel={`Pressure ${formattedValues.pressure}`}
+                  accessibilityLabel={`Rainfall ${formattedValues.rainfall}`}
                 >
                   <Text 
                     variant="labelMedium" 
@@ -220,7 +221,7 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
                       { fontSize: accessibilitySettings.smallFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
                     ]}
                   >
-                    Pressure
+                    Rainfall
                   </Text>
                   <Text 
                     variant="titleMedium" 
@@ -229,7 +230,7 @@ export const WeatherCard: React.FC<WeatherCardProps> = memo(({
                       { fontSize: accessibilitySettings.bodyFontSize, fontWeight: accessibilitySettings.bodyFontWeight as any }
                     ]}
                   >
-                    {formattedValues.pressure}
+                    {formattedValues.rainfall}
                   </Text>
                 </View>
               )}
@@ -336,7 +337,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   locationName: {
-    fontWeight: '700',
+    ...typography.titleLarge,
     marginBottom: 8,
   },
   condition: {
@@ -369,10 +370,10 @@ const styles = StyleSheet.create({
   detailLabel: {
     marginBottom: 6,
     textAlign: 'center',
-    fontWeight: '500',
+    ...typography.labelMedium,
   },
   detailValue: {
-    fontWeight: '600',
+    ...typography.titleSmall,
     textAlign: 'center',
   },
 });

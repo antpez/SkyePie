@@ -1,4 +1,4 @@
-import { TemperatureUnit, WindSpeedUnit, PressureUnit, DistanceUnit } from '../types/units';
+import { TemperatureUnit, WindSpeedUnit, RainfallUnit, DistanceUnit } from '../types/units';
 
 // Temperature conversions
 export const convertTemperature = (value: number, from: TemperatureUnit, to: TemperatureUnit): number => {
@@ -48,33 +48,31 @@ export const convertWindSpeed = (value: number, from: WindSpeedUnit, to: WindSpe
   }
 };
 
-// Pressure conversions
-export const convertPressure = (value: number, from: PressureUnit, to: PressureUnit): number => {
+// Rainfall conversions
+export const convertRainfall = (value: number, from: RainfallUnit, to: RainfallUnit): number => {
   if (from === to) return value;
   
-  // Convert to hPa first
-  let hpaValue: number;
+  // Convert to mm first
+  let mmValue: number;
   switch (from) {
-    case 'hpa':
-    case 'mb':
-      hpaValue = value;
+    case 'mm':
+      mmValue = value;
       break;
     case 'in':
-      hpaValue = value * 33.8638866667;
+      mmValue = value * 25.4;
       break;
     default:
-      hpaValue = value;
+      mmValue = value;
   }
   
-  // Convert from hPa to target unit
+  // Convert from mm to target unit
   switch (to) {
-    case 'hpa':
-    case 'mb':
-      return hpaValue;
+    case 'mm':
+      return mmValue;
     case 'in':
-      return hpaValue / 33.8638866667;
+      return mmValue / 25.4;
     default:
-      return hpaValue;
+      return mmValue;
   }
 };
 
@@ -107,10 +105,10 @@ export const formatWindSpeed = (value: number, unit: WindSpeedUnit): string => {
   return `${rounded} ${symbol}`;
 };
 
-// Format pressure with unit symbol
-export const formatPressure = (value: number, unit: PressureUnit): string => {
-  const rounded = Math.round(value);
-  const symbol = unit === 'in' ? 'inHg' : unit === 'mb' ? 'mb' : 'hPa';
+// Format rainfall with unit symbol
+export const formatRainfall = (value: number, unit: RainfallUnit): string => {
+  const rounded = Math.round(value * 10) / 10; // Round to 1 decimal place
+  const symbol = unit === 'in' ? 'in' : 'mm';
   return `${rounded} ${symbol}`;
 };
 
@@ -134,12 +132,10 @@ export const getUnitSymbol = (unit: string): string => {
       return 'mph';
     case 'ms':
       return 'm/s';
-    case 'hpa':
-      return 'hPa';
-    case 'mb':
-      return 'mb';
+    case 'mm':
+      return 'mm';
     case 'in':
-      return 'inHg';
+      return 'in';
     case 'km':
       return 'km';
     case 'miles':
@@ -169,14 +165,14 @@ export const convertAndFormatWindSpeed = (
   return formatWindSpeed(converted, to);
 };
 
-// Convert and format pressure
-export const convertAndFormatPressure = (
+// Convert and format rainfall
+export const convertAndFormatRainfall = (
   value: number, 
-  from: PressureUnit, 
-  to: PressureUnit
+  from: RainfallUnit, 
+  to: RainfallUnit
 ): string => {
-  const converted = convertPressure(value, from, to);
-  return formatPressure(converted, to);
+  const converted = convertRainfall(value, from, to);
+  return formatRainfall(converted, to);
 };
 
 // Convert and format distance

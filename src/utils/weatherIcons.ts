@@ -32,12 +32,6 @@ const weatherIcons = {
   'windy.png': require('../../assets/images/weather-icons/windy.png'),
 };
 
-// Debug: Log what the require statements are returning
-console.log('WeatherIcons debug:', {
-  'clear_night.png': weatherIcons['clear_night.png'],
-  'sunny.png': weatherIcons['sunny.png'],
-  'cloudy_night_half.png': weatherIcons['cloudy_night_half.png'],
-});
 
 export interface WeatherIconMapping {
   [key: string]: string;

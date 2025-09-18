@@ -21,7 +21,7 @@ export class WeatherService {
   private api: AxiosInstance;
   private config: WeatherApiConfig;
   private cache: Map<string, { data: any; timestamp: number; ttl: number }> = new Map();
-  private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes for faster updates
 
   constructor(apiKey: string) {
     // Validate API key
@@ -34,8 +34,8 @@ export class WeatherService {
     this.config = {
       baseUrl: APP_CONFIG.api.openWeatherMap.baseUrl,
       apiKey,
-      timeout: 5000, // Reduced from 10000ms to 5000ms
-      retryAttempts: 2, // Reduced from 3 to 2
+      timeout: 3000, // Reduced to 3 seconds for faster failures
+      retryAttempts: 1, // Reduced to 1 retry for faster response
     };
 
     this.api = axios.create({
@@ -73,7 +73,7 @@ export class WeatherService {
   }
 
   private setupCacheCleanup() {
-    // Clean up expired cache entries every 5 minutes
+    // Clean up expired cache entries every 2 minutes for better memory management
     setInterval(() => {
       const now = Date.now();
       for (const [key, value] of this.cache.entries()) {
@@ -81,7 +81,7 @@ export class WeatherService {
           this.cache.delete(key);
         }
       }
-    }, 5 * 60 * 1000);
+    }, 2 * 60 * 1000);
   }
 
   private getCacheKey(endpoint: string, params: Record<string, any>): string {
@@ -158,6 +158,7 @@ export class WeatherService {
             params,
           });
 
+
           // Cache the result
           this.setCachedData(cacheKey, response.data);
           return response.data;
@@ -193,6 +194,7 @@ export class WeatherService {
         const response: AxiosResponse<WeatherForecast> = await this.api.get('/forecast', {
           params,
         });
+
 
         // Cache the result
         this.setCachedData(cacheKey, response.data);

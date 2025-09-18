@@ -20,7 +20,7 @@ class PerformanceMonitor {
   private metrics: Map<string, PerformanceMetric> = new Map();
   private stats: Map<string, PerformanceStats> = new Map();
   private isEnabled: boolean = __DEV__; // Only enable in development
-  private logThreshold: number = 100; // Reduced threshold for better performance monitoring
+  private logThreshold: number = 200; // Increased threshold to reduce noise
   private logLevel: 'none' | 'slow' | 'all' = 'slow'; // Default to slow operations only
   private maxMetrics: number = 1000; // Limit memory usage
 

@@ -1,246 +1,189 @@
-import { performanceMonitor } from './performanceMonitor';
+import { LocationCoordinates } from '../types';
 
 /**
- * Performance optimization utilities for React Native
+ * Performance optimization utilities
  */
 
-// Debounce function for performance
-export const debounce = <T extends (...args: any[]) => any>(
+// Debounce function to limit rapid function calls
+export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
-): ((...args: Parameters<T>) => void) => {
-  let timeout: NodeJS.Timeout;
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  
   return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    
+    timeout = setTimeout(() => {
+      func(...args);
+    }, wait);
   };
-};
+}
 
-// Throttle function for performance
-export const throttle = <T extends (...args: any[]) => any>(
+// Throttle function to limit function calls to once per interval
+export function throttle<T extends (...args: any[]) => any>(
   func: T,
   limit: number
-): ((...args: Parameters<T>) => void) => {
-  let inThrottle: boolean;
+): (...args: Parameters<T>) => void {
+  let inThrottle: boolean = false;
+  
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args);
       inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
+      setTimeout(() => inThrottle = false, limit);
     }
   };
-};
+}
+
+// Check if two locations are significantly different
+export function hasLocationChanged(
+  oldLocation: LocationCoordinates | null,
+  newLocation: LocationCoordinates | null,
+  threshold: number = 0.001
+): boolean {
+  if (!oldLocation || !newLocation) return true;
+  
+  const latDiff = Math.abs(newLocation.latitude - oldLocation.latitude);
+  const lonDiff = Math.abs(newLocation.longitude - oldLocation.longitude);
+  
+  return latDiff > threshold || lonDiff > threshold;
+}
 
 // Memoize expensive calculations
-export const memoize = <T extends (...args: any[]) => any>(
-  fn: T,
+export function memoize<T extends (...args: any[]) => any>(
+  func: T,
   keyGenerator?: (...args: Parameters<T>) => string
-): T => {
+): T {
   const cache = new Map<string, ReturnType<T>>();
   
-  return ((...args: Parameters<T>): ReturnType<T> => {
+  return ((...args: Parameters<T>) => {
     const key = keyGenerator ? keyGenerator(...args) : JSON.stringify(args);
     
     if (cache.has(key)) {
-      return cache.get(key)!;
+      return cache.get(key);
     }
     
-    const result = fn(...args);
+    const result = func(...args);
     cache.set(key, result);
+    
+    // Limit cache size to prevent memory leaks
+    if (cache.size > 100) {
+      const firstKey = cache.keys().next().value;
+      cache.delete(firstKey);
+    }
+    
     return result;
   }) as T;
-};
+}
 
-// Batch operations for better performance
+// Batch multiple operations together
 export class BatchProcessor<T> {
-  private batch: T[] = [];
-  private batchSize: number;
-  private timeout: number;
+  private queue: T[] = [];
   private processor: (items: T[]) => Promise<void> | void;
-  private timeoutId: NodeJS.Timeout | null = null;
+  private batchSize: number;
+  private delay: number;
+  private timeout: NodeJS.Timeout | null = null;
 
   constructor(
     processor: (items: T[]) => Promise<void> | void,
     batchSize: number = 10,
-    timeout: number = 100
+    delay: number = 100
   ) {
     this.processor = processor;
     this.batchSize = batchSize;
-    this.timeout = timeout;
+    this.delay = delay;
   }
 
   add(item: T): void {
-    this.batch.push(item);
+    this.queue.push(item);
     
-    if (this.batch.length >= this.batchSize) {
+    if (this.queue.length >= this.batchSize) {
       this.flush();
-    } else if (!this.timeoutId) {
-      this.timeoutId = setTimeout(() => this.flush(), this.timeout);
+    } else if (!this.timeout) {
+      this.timeout = setTimeout(() => this.flush(), this.delay);
     }
   }
 
   async flush(): Promise<void> {
-    if (this.batch.length === 0) return;
-    
-    const items = [...this.batch];
-    this.batch = [];
-    
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-      this.timeoutId = null;
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = null;
     }
+    
+    if (this.queue.length === 0) return;
+    
+    const items = [...this.queue];
+    this.queue = [];
     
     await this.processor(items);
   }
 }
 
-// Image preloading utility
-export const preloadImages = async (imageSources: (string | number)[]): Promise<void> => {
-  return performanceMonitor.measureAsync('preloadImages', async () => {
-    const { Image } = require('react-native');
-    
-    const preloadPromises = imageSources.map((source) => {
-      return new Promise<void>((resolve, reject) => {
-        Image.prefetch(source)
-          .then(() => resolve())
-          .catch(reject);
-      });
-    });
-    
-    await Promise.allSettled(preloadPromises);
-  }, { imageCount: imageSources.length });
-};
+// Optimize image loading
+export function optimizeImageUrl(url: string, width?: number, height?: number): string {
+  if (!url) return url;
+  
+  // Add query parameters for optimization if supported by the service
+  const urlObj = new URL(url);
+  
+  if (width) urlObj.searchParams.set('w', width.toString());
+  if (height) urlObj.searchParams.set('h', height.toString());
+  urlObj.searchParams.set('q', '80'); // Quality setting
+  urlObj.searchParams.set('f', 'webp'); // Use WebP format
+  
+  return urlObj.toString();
+}
 
-// Lazy loading utility
-export const createLazyComponent = <P extends object>(
-  importFunc: () => Promise<{ default: React.ComponentType<P> }>,
+// Lazy load components
+export function lazyLoad<T extends React.ComponentType<any>>(
+  importFunc: () => Promise<{ default: T }>,
   fallback?: React.ComponentType
-) => {
-  const React = require('react');
+): React.LazyExoticComponent<T> {
   return React.lazy(importFunc);
-};
+}
+
+// Performance monitoring wrapper
+export function withPerformanceTracking<T extends (...args: any[]) => any>(
+  func: T,
+  name: string,
+  threshold: number = 100
+): T {
+  return ((...args: Parameters<T>) => {
+    const start = performance.now();
+    const result = func(...args);
+    const duration = performance.now() - start;
+    
+    if (duration > threshold) {
+      console.warn(`🐌 Slow operation: ${name} took ${duration.toFixed(2)}ms`);
+    }
+    
+    return result;
+  }) as T;
+}
 
 // Memory usage monitoring
-export const getMemoryUsage = (): {
-  used: number;
-  total: number;
-  percentage: number;
-} => {
-  if (typeof performance !== 'undefined' && 'memory' in performance) {
+export function logMemoryUsage(context: string): void {
+  if (__DEV__ && (performance as any).memory) {
     const memory = (performance as any).memory;
-    return {
-      used: memory.usedJSHeapSize,
-      total: memory.totalJSHeapSize,
-      percentage: (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100,
-    };
-  }
-  
-  return { used: 0, total: 0, percentage: 0 };
-};
-
-// Performance-aware list rendering
-export const createVirtualizedListProps = (
-  itemHeight: number,
-  containerHeight: number,
-  dataLength: number
-) => {
-  const visibleItems = Math.ceil(containerHeight / itemHeight) + 2; // Buffer of 2 items
-  
-  return {
-    getItemLayout: (data: any, index: number) => ({
-      length: itemHeight,
-      offset: itemHeight * index,
-      index,
-    }),
-    initialNumToRender: visibleItems,
-    maxToRenderPerBatch: visibleItems,
-    windowSize: visibleItems,
-    removeClippedSubviews: true,
-    updateCellsBatchingPeriod: 50,
-  };
-};
-
-// Network request optimization
-export const createOptimizedRequest = (
-  baseUrl: string,
-  timeout: number = 10000,
-  retries: number = 3
-) => {
-  return {
-    baseURL: baseUrl,
-    timeout,
-    retries,
-    retryDelay: (retryCount: number) => Math.pow(2, retryCount) * 1000,
-    retryCondition: (error: any) => {
-      return error.code === 'NETWORK_ERROR' || error.response?.status >= 500;
-    },
-  };
-};
-
-// Bundle size optimization
-export const createCodeSplitComponent = <P extends object>(
-  componentName: string,
-  importFunc: () => Promise<{ default: React.ComponentType<P> }>
-) => {
-  const React = require('react') as typeof import('react');
-  const LazyComponent = React.lazy(importFunc);
-  
-  return React.forwardRef<any, P>((props: React.PropsWithoutRef<P>, ref: React.Ref<any>) => {
-    return React.createElement(
-      React.Suspense,
-      { fallback: React.createElement('div', null, `Loading ${componentName}...`) },
-      React.createElement(LazyComponent, { ...props, ref })
-    );
-  });
-};
-
-// Performance metrics collection
-export class PerformanceMetrics {
-  private static instance: PerformanceMetrics;
-  private metrics: Map<string, number[]> = new Map();
-
-  static getInstance(): PerformanceMetrics {
-    if (!PerformanceMetrics.instance) {
-      PerformanceMetrics.instance = new PerformanceMetrics();
-    }
-    return PerformanceMetrics.instance;
-  }
-
-  recordMetric(name: string, value: number): void {
-    if (!this.metrics.has(name)) {
-      this.metrics.set(name, []);
-    }
-    this.metrics.get(name)!.push(value);
-  }
-
-  getAverageMetric(name: string): number {
-    const values = this.metrics.get(name);
-    if (!values || values.length === 0) return 0;
-    return values.reduce((sum, val) => sum + val, 0) / values.length;
-  }
-
-  getMetricStats(name: string): {
-    average: number;
-    min: number;
-    max: number;
-    count: number;
-  } {
-    const values = this.metrics.get(name);
-    if (!values || values.length === 0) {
-      return { average: 0, min: 0, max: 0, count: 0 };
-    }
-
-    return {
-      average: values.reduce((sum, val) => sum + val, 0) / values.length,
-      min: Math.min(...values),
-      max: Math.max(...values),
-      count: values.length,
-    };
-  }
-
-  clearMetrics(): void {
-    this.metrics.clear();
+    console.log(`📊 Memory usage (${context}):`, {
+      used: `${Math.round(memory.usedJSHeapSize / 1024 / 1024)}MB`,
+      total: `${Math.round(memory.totalJSHeapSize / 1024 / 1024)}MB`,
+      limit: `${Math.round(memory.jsHeapSizeLimit / 1024 / 1024)}MB`,
+    });
   }
 }
 
-export const performanceMetrics = PerformanceMetrics.getInstance();
+// Clean up resources
+export function cleanupResources(): void {
+  // Clear any global caches or timers
+  if (typeof window !== 'undefined') {
+    // Clear any global intervals or timeouts
+    const highestTimeoutId = setTimeout(() => {}, 0);
+    for (let i = 0; i < highestTimeoutId; i++) {
+      clearTimeout(i);
+    }
+  }
+}

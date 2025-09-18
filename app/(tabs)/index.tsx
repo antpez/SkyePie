@@ -18,7 +18,7 @@ import { LocationCoordinates, Location } from '@/types';
 import { APP_CONFIG } from '@/config/app';
 import { offlineCacheService, userService, storageService } from '@/services';
 import { locationRepository } from '@/database/repositories/locationRepository';
-import { formatTemperature, formatWindSpeed, formatHumidity, formatPressure, formatVisibility, formatTime, formatDayOfWeek } from '@/utils/formatters';
+import { formatTemperature, formatWindSpeed, formatHumidity, formatRainfall, formatVisibility, formatTime, formatDayOfWeek } from '@/utils/formatters';
 import { performanceMonitor } from '@/utils/performanceMonitor';
 import { errorLogger } from '@/utils/errorLogger';
 import '@/config/performance'; // Initialize performance monitoring
@@ -191,6 +191,8 @@ const WeatherScreen = memo(() => {
     }
     return currentLocation;
   }, [selectedLocation, reduxCurrentLocation, currentLocation]);
+
+
   const hasSearchParams = useMemo(() => 
     !!(searchParams.latitude && searchParams.longitude), 
     [searchParams.latitude, searchParams.longitude]
@@ -209,20 +211,23 @@ const WeatherScreen = memo(() => {
     }
     
     // Add safety checks for all object properties
-    return {
+    const processedData = {
       name: currentWeather.name || 'Unknown Location',
       condition: currentWeather.weather?.[0]?.description || 'Clear sky',
       temperature: currentWeather.main?.temp || 0,
       feelsLike: currentWeather.main?.feels_like || 0,
       humidity: currentWeather.main?.humidity || 0,
       windSpeed: currentWeather.wind?.speed || 0,
-      pressure: currentWeather.main?.pressure || 0,
+      rainfall: currentWeather.rain?.['1h'] || 0,
       visibility: currentWeather.visibility || 0,
       sunrise: currentWeather.sys?.sunrise || 0,
       sunset: currentWeather.sys?.sunset || 0,
       timezone: currentWeather.timezone || 0,
       weatherIcon: currentWeather.weather?.[0] || { id: 800, main: 'Clear', description: 'clear sky', icon: '01d' }
     };
+
+
+    return processedData;
   }, [currentWeather]);
 
   // Memoized forecast processing
@@ -315,8 +320,6 @@ const WeatherScreen = memo(() => {
       
       if (__DEV__) {
         console.log('🌤️ Loading weather data for coordinates:', location.latitude, location.longitude);
-        console.log('📍 Current selected location:', selectedLocation?.name || 'undefined', selectedLocation?.latitude || 'undefined', selectedLocation?.longitude || 'undefined');
-        console.log('📍 LocationToUse:', locationToUse?.latitude, locationToUse?.longitude);
         console.trace('🔍 loadWeatherData call stack');
       }
       
@@ -379,7 +382,6 @@ const WeatherScreen = memo(() => {
       
       if (currentLocation) {
         if (__DEV__) {
-          console.log('📍 Current location obtained during refresh:', currentLocation.latitude, currentLocation.longitude);
         }
         
         // Create a Location object for Redux
@@ -464,7 +466,6 @@ const WeatherScreen = memo(() => {
       dispatch(setSelectedLocation(locationObj)); // Also set as selected location so map updates
       
       if (__DEV__) {
-        console.log('📍 Current location button pressed - updating both weather and map:', location.latitude, location.longitude);
       }
       
       await loadWeatherData(location);
@@ -768,13 +769,10 @@ const WeatherScreen = memo(() => {
               updatedAt: new Date(),
             };
             
+            
             dispatch(setSelectedLocation(locationObj));
             
             // Use fastLoadWeather for immediate display with background refresh
-            if (__DEV__) {
-              console.log('🚀 fastLoadWeather called with coordinates:', location.latitude, location.longitude);
-              console.trace('🔍 fastLoadWeather call stack');
-            }
             await fastLoadWeather(location.latitude, location.longitude);
           }
         } catch (err) {
@@ -835,15 +833,7 @@ const WeatherScreen = memo(() => {
         }
         
         // Check if we have search parameters first (from navigation)
-        if (__DEV__) {
-          console.log('🔍 Checking search params:', { hasSearchParams, hasProcessedSearchParams, searchParams });
-        }
         if (hasSearchParams && !hasProcessedSearchParams) {
-          if (__DEV__) {
-            console.log('🔍 Processing search parameters:', searchParams);
-            console.log('📍 Current selected location:', selectedLocation?.name, selectedLocation?.latitude, selectedLocation?.longitude);
-            console.log('🚫 Has processed search params:', hasProcessedSearchParams);
-          }
           const lat = parseFloat(searchParams.latitude as string);
           const lon = parseFloat(searchParams.longitude as string);
           
@@ -920,7 +910,6 @@ const WeatherScreen = memo(() => {
             
             // Use fastLoadWeather for immediate display with background refresh
             if (__DEV__) {
-              console.log('🚀 fastLoadWeather (storage) called with coordinates:', convertedLocation.latitude, convertedLocation.longitude);
               console.trace('🔍 fastLoadWeather call stack');
             }
             await fastLoadWeather(convertedLocation.latitude, convertedLocation.longitude);
@@ -958,7 +947,6 @@ const WeatherScreen = memo(() => {
                 
                 // Use fastLoadWeather for immediate display with background refresh
                 if (__DEV__) {
-                  console.log('🚀 fastLoadWeather (current) called with coordinates:', location.latitude, location.longitude);
                   console.trace('🔍 fastLoadWeather call stack');
                 }
                 await fastLoadWeather(location.latitude, location.longitude);
@@ -993,7 +981,6 @@ const WeatherScreen = memo(() => {
                 
                 // Use fastLoadWeather for immediate display with background refresh
                 if (__DEV__) {
-                  console.log('🚀 fastLoadWeather (fallback) called with coordinates:', fallbackLocation.latitude, fallbackLocation.longitude);
                   console.trace('🔍 fastLoadWeather call stack');
                 }
                 await fastLoadWeather(fallbackLocation.latitude, fallbackLocation.longitude);
@@ -1155,6 +1142,7 @@ const WeatherScreen = memo(() => {
 
   return (
     <View style={themeStyles.container} key={`weather-${effectiveTheme}`}>
+      
       {/* Universal Header */}
       <UniversalHeader 
         title="SkyePie" 
@@ -1263,13 +1251,13 @@ const WeatherScreen = memo(() => {
                   </View>
                 )}
                 
-                {displayPreferences.showPressure && (
+                {displayPreferences.showRainfall && (
                   <View style={styles.detailItem}>
                     <Text variant="labelMedium" style={[styles.detailLabel, { color: theme.colors.onSurfaceVariant }]}>
-                      Pressure
+                      Rainfall
                     </Text>
                     <Text variant="titleMedium" style={[styles.detailValue, { color: theme.colors.onSurface }]}>
-                      {formatPressure(processedWeatherData.pressure, units.pressure)}
+                      {formatRainfall(processedWeatherData.rainfall, units.rainfall)}
                     </Text>
                   </View>
                 )}

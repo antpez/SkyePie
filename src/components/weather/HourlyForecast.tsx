@@ -6,7 +6,8 @@ import { useThemeContext } from '../../contexts/ThemeContext';
 import { useUnits } from '../../contexts/UnitsContext';
 import { ForecastItem } from '../../types';
 import { WeatherIcon } from './WeatherIcon';
-import { formatTemperature, formatTime, formatWindSpeed, formatHumidity } from '../../utils/formatters';
+import { formatTemperature, formatTime, formatWindSpeed, formatHumidity, formatRainfall } from '../../utils/formatters';
+import { typography } from '../../styles/typography';
 
 interface HourlyForecastProps {
   forecast: ForecastItem[];
@@ -36,10 +37,10 @@ export const HourlyForecast: React.FC<HourlyForecastProps> = memo(({
       windSpeed: formatWindSpeed(item.wind.speed, units.windSpeed),
       windDirection: item.wind.deg,
       precipitation: item.pop ? Math.round(item.pop * 100) : 0,
-      pressure: item.main.pressure,
+      rainfall: item.rain?.['1h'] ? formatRainfall(item.rain['1h'], units.rainfall) : '0 mm',
       visibility: item.visibility ? Math.round(item.visibility / 1000) : null
     }));
-  }, [next24Hours, units.temperature, units.windSpeed]);
+  }, [next24Hours, units.temperature, units.windSpeed, units.rainfall]);
 
   // Memoize theme styles
   const themeStyles = useMemo(() => ({
@@ -144,22 +145,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   time: {
-    fontSize: 12,
-    fontWeight: '500',
+    ...typography.labelSmall,
     marginBottom: 6,
   },
   temperature: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    ...typography.titleSmall,
     marginTop: 4,
   },
   feelsLike: {
-    fontSize: 10,
+    ...typography.caption,
     marginTop: 2,
     textAlign: 'center',
   },
   description: {
-    fontSize: 9,
+    ...typography.caption,
     textAlign: 'center',
     marginTop: 4,
     marginBottom: 6,
@@ -174,7 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   detailText: {
-    fontSize: 9,
+    ...typography.caption,
     marginLeft: 2,
   },
   precipitationChip: {
@@ -182,7 +181,7 @@ const styles = StyleSheet.create({
     height: 20,
   },
   chipText: {
-    fontSize: 8,
+    ...typography.caption,
   },
 });
 

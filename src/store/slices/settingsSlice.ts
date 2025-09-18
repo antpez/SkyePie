@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { UserSettings, TemperatureUnit, WindSpeedUnit, PressureUnit } from '../../types';
+import { UserSettings, TemperatureUnit, WindSpeedUnit, RainfallUnit } from '../../types';
 
 interface SettingsState {
   settings: UserSettings | null;
@@ -12,7 +12,7 @@ const defaultSettings: UserSettings = {
   userId: '',
   temperatureUnit: 'celsius',
   windSpeedUnit: 'kmh',
-  pressureUnit: 'hpa',
+  rainfallUnit: 'mm',
   distanceUnit: 'km',
   theme: 'system',
   notificationsEnabled: true,
@@ -21,7 +21,7 @@ const defaultSettings: UserSettings = {
   showFeelsLike: true,
   showHumidity: true,
   showWindSpeed: true,
-  showPressure: false,
+  showRainfall: true,
   showUVIndex: false,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -53,9 +53,9 @@ export const settingsSlice = createSlice({
         state.settings.updatedAt = new Date();
       }
     },
-    updatePressureUnit: (state, action: PayloadAction<PressureUnit>) => {
+    updateRainfallUnit: (state, action: PayloadAction<RainfallUnit>) => {
       if (state.settings) {
-        state.settings.pressureUnit = action.payload;
+        state.settings.rainfallUnit = action.payload;
         state.settings.updatedAt = new Date();
       }
     },
@@ -84,7 +84,7 @@ export const settingsSlice = createSlice({
       }
     },
     updateDisplayPreference: (state, action: PayloadAction<{
-      key: keyof Pick<UserSettings, 'showFeelsLike' | 'showHumidity' | 'showWindSpeed' | 'showPressure' | 'showUVIndex'>;
+      key: keyof Pick<UserSettings, 'showFeelsLike' | 'showHumidity' | 'showWindSpeed' | 'showRainfall' | 'showUVIndex'>;
       value: boolean;
     }>) => {
       if (state.settings) {
@@ -109,7 +109,7 @@ export const {
   setSettings,
   updateTemperatureUnit,
   updateWindSpeedUnit,
-  updatePressureUnit,
+  updateRainfallUnit,
   updateTheme,
   updateNotifications,
   updateLocationAccuracy,

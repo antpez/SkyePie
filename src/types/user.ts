@@ -27,7 +27,7 @@ export interface DisplayPreferences {
   showFeelsLike: boolean;
   showHumidity: boolean;
   showWindSpeed: boolean;
-  showPressure: boolean;
+  showRainfall: boolean;
   showUVIndex: boolean;
   showSunriseSunset: boolean;
 }
@@ -37,7 +37,7 @@ export interface UserSettings {
   userId: string;
   temperatureUnit: 'celsius' | 'fahrenheit';
   windSpeedUnit: 'kmh' | 'mph' | 'ms';
-  pressureUnit: 'hpa' | 'in' | 'mb';
+  rainfallUnit: 'mm' | 'in';
   distanceUnit: 'km' | 'miles';
   theme: 'light' | 'dark' | 'system';
   notificationsEnabled: boolean;
@@ -46,7 +46,7 @@ export interface UserSettings {
   showFeelsLike: boolean;
   showHumidity: boolean;
   showWindSpeed: boolean;
-  showPressure: boolean;
+  showRainfall: boolean;
   showUVIndex: boolean;
   createdAt: Date;
   updatedAt: Date;

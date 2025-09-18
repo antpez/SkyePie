@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { WeatherUnits, TemperatureUnit, WindSpeedUnit, PressureUnit, DistanceUnit, DEFAULT_UNITS } from '../types/units';
+import { WeatherUnits, TemperatureUnit, WindSpeedUnit, RainfallUnit, DistanceUnit, DEFAULT_UNITS } from '../types/units';
 import { storageService } from '../services';
 
 interface UnitsContextType {
   units: WeatherUnits;
   setTemperatureUnit: (unit: TemperatureUnit) => Promise<void>;
   setWindSpeedUnit: (unit: WindSpeedUnit) => Promise<void>;
-  setPressureUnit: (unit: PressureUnit) => Promise<void>;
+  setRainfallUnit: (unit: RainfallUnit) => Promise<void>;
   setDistanceUnit: (unit: DistanceUnit) => Promise<void>;
   setUnits: (units: WeatherUnits) => Promise<void>;
   resetToDefaults: () => Promise<void>;
@@ -60,9 +60,9 @@ export function UnitsProvider({ children }: UnitsProviderProps) {
     await saveUnits(newUnits);
   }, [units, saveUnits]);
 
-  // Set pressure unit
-  const setPressureUnit = useCallback(async (unit: PressureUnit) => {
-    const newUnits = { ...units, pressure: unit };
+  // Set rainfall unit
+  const setRainfallUnit = useCallback(async (unit: RainfallUnit) => {
+    const newUnits = { ...units, rainfall: unit };
     await saveUnits(newUnits);
   }, [units, saveUnits]);
 
@@ -91,7 +91,7 @@ export function UnitsProvider({ children }: UnitsProviderProps) {
     units,
     setTemperatureUnit,
     setWindSpeedUnit,
-    setPressureUnit,
+    setRainfallUnit,
     setDistanceUnit,
     setUnits,
     resetToDefaults,
@@ -113,7 +113,7 @@ export function useUnits(): UnitsContextType {
       units: DEFAULT_UNITS,
       setTemperatureUnit: async () => {},
       setWindSpeedUnit: async () => {},
-      setPressureUnit: async () => {},
+      setRainfallUnit: async () => {},
       setDistanceUnit: async () => {},
       setUnits: async () => {},
       resetToDefaults: async () => {},

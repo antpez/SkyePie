@@ -19,7 +19,7 @@ export const selectPermissionStatus = (state: RootState) => state.location.permi
 export const selectSettings = (state: RootState) => state.settings;
 export const selectTemperatureUnit = (state: RootState) => state.settings.settings?.temperatureUnit || 'celsius';
 export const selectWindSpeedUnit = (state: RootState) => state.settings.settings?.windSpeedUnit || 'kmh';
-export const selectPressureUnit = (state: RootState) => state.settings.settings?.pressureUnit || 'hpa';
+export const selectRainfallUnit = (state: RootState) => state.settings.settings?.rainfallUnit || 'mm';
 export const selectDistanceUnit = (state: RootState) => state.settings.settings?.distanceUnit || 'km';
 
 // Memoized selectors for complex computations
@@ -45,11 +45,11 @@ export const selectLocationData = createSelector(
 );
 
 export const selectUnits = createSelector(
-  [selectTemperatureUnit, selectWindSpeedUnit, selectPressureUnit, selectDistanceUnit],
-  (temperature, windSpeed, pressure, distance) => ({
+  [selectTemperatureUnit, selectWindSpeedUnit, selectRainfallUnit, selectDistanceUnit],
+  (temperature, windSpeed, rainfall, distance) => ({
     temperature,
     windSpeed,
-    pressure,
+    rainfall,
     distance,
   })
 );

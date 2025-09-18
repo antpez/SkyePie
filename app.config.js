@@ -31,7 +31,7 @@ export default {
     slug: "skyepie",
     version: "1.0.0",
     scheme: "skyepie",
-    icon: "./assets/icon-1757816287706-2.png",
+    icon: "./assets/splash-icon.png",
     plugins: [
       "expo-router"
     ],
@@ -57,14 +57,18 @@ export default {
       icon: "./assets/icon2.icon",
       config: {
         usesNonExemptEncryption: false,
+      },
+      infoPlist: {
+        UIAppFonts: []
+      }
     },
-  },
     android: {
       package: "com.antpez.skyepie",
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
-      }
+      },
+      fonts: []
     },
     updates: {
       url: "https://u.expo.dev/c2589986-dccf-4d6f-8bfb-adc2d6bca8fa",

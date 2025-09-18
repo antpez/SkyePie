@@ -9,13 +9,13 @@ import { configureLayoutAnimation } from '@/utils/animations';
 
 const SettingsScreen = memo(() => {
   const { themeMode, setTheme, effectiveTheme, isLoading, theme } = useThemeContext();
-  const { units, setTemperatureUnit, setWindSpeedUnit, setPressureUnit, setDistanceUnit } = useUnits();
+  const { units, setTemperatureUnit, setWindSpeedUnit, setRainfallUnit, setDistanceUnit } = useUnits();
   const { 
     preferences: displayPreferences, 
     setShowFeelsLike, 
     setShowHumidity, 
     setShowWindSpeed, 
-    setShowPressure,
+    setShowRainfall,
     isLoading: displayPreferencesLoading 
   } = useDisplayPreferences();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -45,11 +45,10 @@ const SettingsScreen = memo(() => {
       default: return 'km/h';
     }
   };
-  const getPressureSymbol = () => {
-    switch (units.pressure) {
-      case 'mb': return 'mb';
-      case 'in': return 'inHg';
-      default: return 'hPa';
+  const getRainfallSymbol = () => {
+    switch (units.rainfall) {
+      case 'in': return 'in';
+      default: return 'mm';
     }
   };
 
@@ -101,22 +100,22 @@ const SettingsScreen = memo(() => {
     }
   }, [units.windSpeed, setWindSpeedUnit]);
 
-  const handlePressureUnitChange = useCallback(async () => {
+  const handleRainfallUnitChange = useCallback(async () => {
     try {
-      const pressureUnits = ['hpa', 'mb', 'in'] as const;
-      const currentIndex = pressureUnits.indexOf(units.pressure);
-      const nextIndex = (currentIndex + 1) % pressureUnits.length;
-      const newUnit = pressureUnits[nextIndex];
-      await setPressureUnit(newUnit);
+      const rainfallUnits = ['mm', 'in'] as const;
+      const currentIndex = rainfallUnits.indexOf(units.rainfall);
+      const nextIndex = (currentIndex + 1) % rainfallUnits.length;
+      const newUnit = rainfallUnits[nextIndex];
+      await setRainfallUnit(newUnit);
       setError(null);
-      setSuccessMessage(`Pressure unit changed to ${newUnit}`);
+      setSuccessMessage(`Rainfall unit changed to ${newUnit}`);
       setSnackbarVisible(true);
     } catch (error) {
-      console.error('Error changing pressure unit:', error);
-      setError('Failed to change pressure unit. Please try again.');
+      console.error('Error changing rainfall unit:', error);
+      setError('Failed to change rainfall unit. Please try again.');
       setSnackbarVisible(true);
     }
-  }, [units.pressure, setPressureUnit]);
+  }, [units.rainfall, setRainfallUnit]);
 
   // Display preferences handlers
   const handleShowFeelsLikeChange = useCallback(async () => {
@@ -158,18 +157,18 @@ const SettingsScreen = memo(() => {
     }
   }, [displayPreferences.showWindSpeed, setShowWindSpeed]);
 
-  const handleShowPressureChange = useCallback(async () => {
+  const handleShowRainfallChange = useCallback(async () => {
     try {
-      await setShowPressure(!displayPreferences.showPressure);
+      await setShowRainfall(!displayPreferences.showRainfall);
       setError(null);
-      setSuccessMessage(`Pressure display ${!displayPreferences.showPressure ? 'enabled' : 'disabled'}`);
+      setSuccessMessage(`Rainfall display ${!displayPreferences.showRainfall ? 'enabled' : 'disabled'}`);
       setSnackbarVisible(true);
     } catch (error) {
-      console.error('Error changing pressure preference:', error);
+      console.error('Error changing rainfall preference:', error);
       setError('Failed to update display preference. Please try again.');
       setSnackbarVisible(true);
     }
-  }, [displayPreferences.showPressure, setShowPressure]);
+  }, [displayPreferences.showRainfall, setShowRainfall]);
 
 
   // Memoized values for performance
@@ -339,15 +338,15 @@ const SettingsScreen = memo(() => {
           
           <View style={styles.unitItem}>
             <List.Item
-              title="Pressure"
-              description="hPa, inHg, or mb"
-              left={(props) => <List.Icon {...props} icon="gauge" color={theme.colors.primary} />}
+              title="Rainfall"
+              description="mm or in"
+              left={(props) => <List.Icon {...props} icon="weather-rainy" color={theme.colors.primary} />}
               right={() => (
                 <View style={styles.unitValueContainer}>
-                  <Text style={[styles.unitValue, { color: theme.colors.primary }]}>{getPressureSymbol()}</Text>
+                  <Text style={[styles.unitValue, { color: theme.colors.primary }]}>{getRainfallSymbol()}</Text>
                 </View>
               )}
-              onPress={handlePressureUnitChange}
+              onPress={handleRainfallUnitChange}
               titleStyle={[styles.listItemTitle, { color: theme.colors.onSurface }]}
               descriptionStyle={[styles.listItemDescription, { color: theme.colors.onSurfaceVariant }]}
               style={styles.listItem}
@@ -434,20 +433,20 @@ const SettingsScreen = memo(() => {
           
           <View style={styles.displayOptionItem}>
             <List.Item
-              title="Show Pressure"
-              description="Display atmospheric pressure"
-              left={(props) => <List.Icon {...props} icon="gauge" color={theme.colors.primary} />}
+              title="Show Rainfall"
+              description="Display rainfall amount"
+              left={(props) => <List.Icon {...props} icon="weather-rainy" color={theme.colors.primary} />}
               right={() => (
                 <Switch 
-                  value={displayPreferences.showPressure} 
-                  onValueChange={handleShowPressureChange}
+                  value={displayPreferences.showRainfall} 
+                  onValueChange={handleShowRainfallChange}
                   disabled={displayPreferencesLoading}
                   color={theme.colors.primary}
                   trackColor={{ false: theme.colors.outline, true: theme.colors.primary + '40' }}
                   thumbColor={theme.colors.primary}
                 />
               )}
-              onPress={handleShowPressureChange}
+              onPress={handleShowRainfallChange}
               disabled={displayPreferencesLoading}
               titleStyle={[styles.listItemTitle, { color: theme.colors.onSurface }]}
               descriptionStyle={[styles.listItemDescription, { color: theme.colors.onSurfaceVariant }]}

@@ -1,12 +1,12 @@
 export type TemperatureUnit = 'celsius' | 'fahrenheit';
 export type WindSpeedUnit = 'kmh' | 'mph' | 'ms';
-export type PressureUnit = 'hpa' | 'in' | 'mb';
+export type RainfallUnit = 'mm' | 'in';
 export type DistanceUnit = 'km' | 'miles';
 
 export interface WeatherUnits {
   temperature: TemperatureUnit;
   windSpeed: WindSpeedUnit;
-  pressure: PressureUnit;
+  rainfall: RainfallUnit;
   distance: DistanceUnit;
 }
 
@@ -53,24 +53,18 @@ export const WIND_SPEED_UNITS: UnitOption[] = [
   },
 ];
 
-export const PRESSURE_UNITS: UnitOption[] = [
+export const RAINFALL_UNITS: UnitOption[] = [
   {
-    value: 'hpa',
-    label: 'hPa',
-    symbol: 'hPa',
-    description: 'Hectopascals',
-  },
-  {
-    value: 'mb',
-    label: 'mb',
-    symbol: 'mb',
-    description: 'Millibars',
+    value: 'mm',
+    label: 'mm',
+    symbol: 'mm',
+    description: 'Millimeters',
   },
   {
     value: 'in',
-    label: 'inHg',
-    symbol: 'inHg',
-    description: 'Inches of mercury',
+    label: 'in',
+    symbol: 'in',
+    description: 'Inches',
   },
 ];
 
@@ -92,6 +86,6 @@ export const DISTANCE_UNITS: UnitOption[] = [
 export const DEFAULT_UNITS: WeatherUnits = {
   temperature: 'celsius',
   windSpeed: 'kmh',
-  pressure: 'hpa',
+  rainfall: 'mm',
   distance: 'km',
 };

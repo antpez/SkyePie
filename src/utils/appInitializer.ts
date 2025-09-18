@@ -66,9 +66,11 @@ export class AppInitializer {
 
   async initialize(): Promise<void> {
     if (this.state.isInitialized || this.state.isInitializing) {
+      console.log('🔄 App initialization already in progress or completed');
       return;
     }
 
+    console.log('🚀 Starting app initialization...');
     this.state.isInitializing = true;
     this.state.error = null;
     this.notifyListeners();
@@ -77,95 +79,110 @@ export class AppInitializer {
       // Log device compatibility info
       deviceCompatibility.logDeviceInfo();
       
-      console.log('🚀 Starting app initialization...');
-
       // Get device-specific configuration
       const config = deviceCompatibility.getPlatformSpecificConfig();
       
       // Add device-specific initialization delay
       if (config.initializationDelay > 0) {
+        console.log(`⏱️ Adding ${config.initializationDelay}ms initialization delay`);
         await new Promise(resolve => setTimeout(resolve, config.initializationDelay));
       }
 
       // Step 1: Initialize storage (critical for theme and other settings)
+      console.log('🔄 Step 1: Initializing storage...');
       await this.initializeStorage();
       this.updateProgress({ storage: true });
       console.log('✅ Storage initialized');
 
-      // Step 2: Initialize database (can happen in parallel with theme)
-      const databasePromise = this.initializeDatabase();
+      // Step 2: Initialize database (non-blocking)
+      console.log('🔄 Step 2: Initializing database...');
+      this.initializeDatabase().then(() => {
+        this.updateProgress({ database: true });
+        console.log('✅ Database initialized');
+      }).catch(error => {
+        console.warn('⚠️ Database initialization failed:', error);
+        this.updateProgress({ database: true }); // Mark as done even if failed
+      });
       
-      // Step 3: Initialize theme (depends on storage)
-      const themePromise = this.initializeTheme();
+      // Step 3: Initialize theme (non-blocking)
+      console.log('🔄 Step 3: Initializing theme...');
+      this.initializeTheme().then(() => {
+        this.updateProgress({ theme: true });
+        console.log('✅ Theme initialized');
+      }).catch(error => {
+        console.warn('⚠️ Theme initialization failed:', error);
+        this.updateProgress({ theme: true }); // Mark as done even if failed
+      });
       
-      // Wait for both to complete with device-specific timeout
-      await Promise.race([
-        Promise.all([databasePromise, themePromise]),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Initialization timeout')), config.storageTimeout)
-        )
-      ]);
-      
-      this.updateProgress({ database: true, theme: true });
-      console.log('✅ Database and theme initialized');
-
       // Step 4: Initialize location (non-blocking)
-      this.initializeLocation();
-      this.updateProgress({ location: true });
-      console.log('✅ Location initialized');
+      console.log('🔄 Step 4: Initializing location...');
+      this.initializeLocation().then(() => {
+        this.updateProgress({ location: true });
+        console.log('✅ Location initialized');
+      }).catch(error => {
+        console.warn('⚠️ Location initialization failed:', error);
+        this.updateProgress({ location: true }); // Mark as done even if failed
+      });
 
+      // Mark as initialized immediately - don't wait for all services
+      console.log('🎉 App initialization complete (non-blocking)');
       this.setInitialized();
-      console.log('🎉 App initialization complete');
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
       console.error('❌ App initialization failed:', errorMessage);
-      this.setError(errorMessage);
-      throw error;
+      
+      // Even on error, mark as initialized to prevent endless loading
+      console.warn('⚠️ Forcing initialization completion due to error');
+      this.setInitialized();
     }
   }
 
   private async initializeStorage(): Promise<void> {
     try {
+      console.log('🔄 Initializing storage...');
       // Test storage access
-      await storageService.getTheme();
-      console.log('Storage test successful');
+      const theme = await storageService.getTheme();
+      console.log('✅ Storage test successful, theme:', theme);
     } catch (error) {
-      console.error('Storage initialization failed:', error);
+      console.error('❌ Storage initialization failed:', error);
       throw new Error('Failed to initialize storage');
     }
   }
 
   private async initializeDatabase(): Promise<void> {
     try {
+      console.log('🔄 Initializing database...');
       await databaseConnection.initialize();
-      console.log('Database initialization successful');
+      console.log('✅ Database initialization successful');
     } catch (error) {
-      console.error('Database initialization failed:', error);
+      console.error('❌ Database initialization failed:', error);
       // Don't throw - database is not critical for app startup
-      console.warn('Continuing without database...');
+      console.warn('⚠️ Continuing without database...');
     }
   }
 
   private async initializeTheme(): Promise<void> {
     try {
+      console.log('🔄 Initializing theme...');
       // Load theme settings
       const theme = await storageService.getTheme();
-      console.log('Theme loaded:', theme);
+      console.log('✅ Theme loaded:', theme);
     } catch (error) {
-      console.error('Theme initialization failed:', error);
+      console.error('❌ Theme initialization failed:', error);
       // Don't throw - theme has fallbacks
-      console.warn('Using default theme...');
+      console.warn('⚠️ Using default theme...');
     }
   }
 
   private async initializeLocation(): Promise<void> {
     try {
+      console.log('🔄 Initializing location...');
       // Location initialization is non-blocking
       // Just check if we have permissions, don't wait for location
-      console.log('Location initialization started');
+      console.log('✅ Location initialization started');
     } catch (error) {
-      console.error('Location initialization failed:', error);
+      console.error('❌ Location initialization failed:', error);
       // Don't throw - location is not critical for app startup
     }
   }

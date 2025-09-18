@@ -1,8 +1,8 @@
-import { TemperatureUnit, WindSpeedUnit, PressureUnit, DistanceUnit } from '../types/units';
+import { TemperatureUnit, WindSpeedUnit, RainfallUnit, DistanceUnit } from '../types/units';
 import { 
   convertAndFormatTemperature, 
   convertAndFormatWindSpeed, 
-  convertAndFormatPressure,
+  convertAndFormatRainfall,
   convertAndFormatDistance 
 } from './unitConversions';
 
@@ -48,13 +48,13 @@ export const formatWindSpeed = (speed: number, unit: WindSpeedUnit = 'kmh'): str
   return result;
 };
 
-export const formatPressure = (pressure: number, unit: PressureUnit = 'hpa'): string => {
-  const cacheKey = createCacheKey('pressure', pressure, unit);
+export const formatRainfall = (rainfall: number, unit: RainfallUnit = 'mm'): string => {
+  const cacheKey = createCacheKey('rainfall', rainfall, unit);
   if (formatCache.has(cacheKey)) {
     return formatCache.get(cacheKey)!;
   }
   
-  const result = convertAndFormatPressure(pressure, 'hpa', unit);
+  const result = convertAndFormatRainfall(rainfall, 'mm', unit);
   formatCache.set(cacheKey, result);
   manageCacheSize();
   return result;

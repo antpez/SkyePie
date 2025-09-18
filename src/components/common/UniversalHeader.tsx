@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, StatusBar } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useThemeContext } from '../../contexts/ThemeContext';
+import { typography } from '../../styles/typography';
 
 interface UniversalHeaderProps {
   title: string;
@@ -100,13 +101,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   title: {
-    fontWeight: '700',
-    fontSize: 18,
+    ...typography.titleLarge,
     textAlign: 'center',
   },
   backButton: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.titleSmall,
   },
 });
 

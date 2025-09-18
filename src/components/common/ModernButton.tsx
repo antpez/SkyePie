@@ -3,6 +3,7 @@ import { TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../styles/colors';
+import { typography } from '../../styles/typography';
 
 interface ModernButtonProps {
   title: string;

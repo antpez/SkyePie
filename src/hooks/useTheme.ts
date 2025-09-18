@@ -16,44 +16,28 @@ export const useTheme = () => {
     try {
       console.log('🔄 Starting theme loading...');
       
-      // Set a minimum loading time to ensure proper initialization
-      const loadingPromise = new Promise(resolve => setTimeout(resolve, 100));
-      
-      const savedTheme = await storageService.getTheme();
-      console.log('Loading theme from storage:', savedTheme);
-      
-      // Use the saved theme directly
-      const migratedTheme = savedTheme;
-      
-      setThemeMode(migratedTheme);
-      
-      // Get the actual system theme using Appearance API
-      const currentSystemTheme = Appearance.getColorScheme();
-      
-      // More detailed Android debugging
-      if (require('react-native').Platform.OS === 'android') {
-        console.log('🔍 Android Theme Debug:', {
-          'Appearance.getColorScheme()': currentSystemTheme,
-          'useColorScheme()': systemColorScheme,
-          'Platform.OS': require('react-native').Platform.OS,
-          'Appearance.isDarkColorScheme': currentSystemTheme === 'dark',
-          'Current Time': new Date().toISOString(),
-          'Appearance object exists': !!Appearance,
-          'typeof result': typeof currentSystemTheme,
-          'is null?': currentSystemTheme === null,
-          'is undefined?': currentSystemTheme === undefined
+      // Simplified theme loading with shorter timeout
+      const themePromise = (async () => {
+        const savedTheme = await storageService.getTheme();
+        console.log('Loading theme from storage:', savedTheme);
+        
+        setThemeMode(savedTheme);
+        
+        // Get system theme with simplified detection
+        const currentSystemTheme = Appearance.getColorScheme();
+        console.log('System theme detection:', {
+          useColorScheme: systemColorScheme,
+          Appearance: currentSystemTheme,
+          Platform: require('react-native').Platform.OS
         });
-      }
-      
-      console.log('System theme detection:', {
-        useColorScheme: systemColorScheme,
-        Appearance: currentSystemTheme,
-        Platform: require('react-native').Platform.OS
-      });
-      setActualSystemTheme(currentSystemTheme || null);
-      
-      // Wait for minimum loading time
-      await loadingPromise;
+        setActualSystemTheme(currentSystemTheme || null);
+      })();
+
+      // Race between theme loading and timeout (reduced to 1.5 seconds)
+      await Promise.race([
+        themePromise,
+        new Promise(resolve => setTimeout(resolve, 1500))
+      ]);
       
       // Mark as initialized
       setIsInitialized(true);
@@ -118,103 +102,16 @@ export const useTheme = () => {
     return themeMode === 'light' ? 'light' : themeMode === 'dark' ? 'dark' : 'light';
   }, [themeMode, systemColorScheme, actualSystemTheme, androidThemeOverride, isInitialized]);
 
-  // Helper function to detect Android system theme
+  // Simplified Android theme detection
   const detectAndroidSystemTheme = useCallback(() => {
     try {
-      // Since the Appearance API is broken on Android, we'll use a workaround
-      // We'll try to detect by checking if the system is in dark mode
-      
       const { Platform } = require('react-native');
       
       if (Platform.OS === 'android') {
-        // Method 1: Try to detect by checking system UI
-        // This is a workaround for the broken Appearance API
-        
-        // Check if we can access system settings
-        const { NativeModules } = require('react-native');
-        
-        // Try to access system settings
-        if (NativeModules && NativeModules.SettingsManager) {
-          try {
-            const isDarkMode = NativeModules.SettingsManager.getSystemTheme();
-            console.log('SettingsManager result:', isDarkMode);
-            return isDarkMode === 'dark' ? 'dark' : 'light';
-          } catch (error) {
-            console.log('SettingsManager failed:', error);
-          }
-        }
-        
-        // Method 2: Try to detect by checking system UI
-        // This is a workaround for when native APIs aren't available
-        console.log('Using fallback Android system theme detection');
-        
-        // Method 3: Try to detect by checking if the system is in dark mode
-        // We'll use a combination of approaches
-        try {
-          // Try to detect by checking if the system is in dark mode
-          // This is a workaround for the broken Appearance API
-          const { Appearance } = require('react-native');
-          
-          // Force refresh the appearance API
-          const currentTheme = Appearance.getColorScheme();
-          console.log('Appearance API result:', currentTheme);
-          
-          // If the Appearance API returns 'light' but we suspect it's wrong,
-          // we'll try to detect by checking system UI
-          if (currentTheme === 'light') {
-            // Try to detect by checking if the system is in dark mode
-            // This is a workaround for the broken Appearance API
-            console.log('Appearance API returned light, but system might be dark');
-            
-        // Method 4: Try to detect by checking system UI
-        // This is a workaround for when native APIs aren't available
-        try {
-          // Try to detect by checking if the system is in dark mode
-          // This is a workaround for the broken Appearance API
-          const { Platform } = require('react-native');
-          
-          if (Platform.OS === 'android') {
-            // Try to detect by checking if the system is in dark mode
-            // This is a workaround for the broken Appearance API
-            console.log('Trying alternative Android theme detection');
-            
-            // Method 5: Try to detect by checking system UI
-            // This is a workaround for when native APIs aren't available
-            try {
-              // Try to detect by checking if the system is in dark mode
-              // This is a workaround for the broken Appearance API
-              const { NativeModules } = require('react-native');
-              
-              // Try to access system settings
-              if (NativeModules && NativeModules.SettingsManager) {
-                try {
-                  const isDarkMode = NativeModules.SettingsManager.getSystemTheme();
-                  console.log('SettingsManager result:', isDarkMode);
-                  return isDarkMode === 'dark' ? 'dark' : 'light';
-                } catch (error) {
-                  console.log('SettingsManager failed:', error);
-                }
-              }
-              
-              // For now, we'll return null and let the user manually override
-              // In a real app, you might want to implement a native module
-              return null;
-            } catch (error) {
-              console.log('Alternative Android theme detection failed:', error);
-              return null;
-            }
-          }
-        } catch (error) {
-          console.log('Alternative Android theme detection failed:', error);
-          return null;
-        }
-          }
-          
-          return currentTheme;
-        } catch (error) {
-          console.log('Appearance API detection failed:', error);
-          return null;
-        }
+        // Use the standard Appearance API - it works fine on most Android versions
+        const { Appearance } = require('react-native');
+        const currentTheme = Appearance.getColorScheme();
+        return currentTheme;
       }
       
       return null;
@@ -229,25 +126,15 @@ export const useTheme = () => {
     saveTheme(newTheme);
   }, [themeMode, saveTheme]);
 
-  // Enhanced Android theme detection
+  // Simplified Android theme detection
   const detectAndroidTheme = useCallback(async () => {
     if (require('react-native').Platform.OS !== 'android') return null;
     
     try {
-      // Try to use native Android APIs for more accurate detection
-      const { NativeModules } = require('react-native');
-      
-      // Check if we have access to native modules
-      if (NativeModules && NativeModules.SystemThemeDetector) {
-        const theme = await NativeModules.SystemThemeDetector.getSystemTheme();
-        console.log('Native Android theme detection:', theme);
-        return theme;
-      }
-      
-      // Fallback: Try to detect based on system UI mode
-      // This is a workaround for when native APIs aren't available
-      console.log('Using fallback Android theme detection');
-      return null;
+      // Use the standard Appearance API
+      const { Appearance } = require('react-native');
+      const theme = Appearance.getColorScheme();
+      return theme;
     } catch (error) {
       console.warn('Android theme detection failed:', error);
       return null;
@@ -281,15 +168,6 @@ export const useTheme = () => {
   // Listen for system theme changes
   useEffect(() => {
     const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      console.log('🔄 System theme changed:', colorScheme);
-      if (require('react-native').Platform.OS === 'android') {
-        console.log('🔍 Android Theme Change Debug:', {
-          'New colorScheme': colorScheme,
-          'Previous actualSystemTheme': actualSystemTheme,
-          'Current time': new Date().toISOString(),
-          'Appearance.getColorScheme()': Appearance.getColorScheme()
-        });
-      }
       setActualSystemTheme(colorScheme || null);
     });
 

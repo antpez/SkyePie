@@ -6,7 +6,7 @@ const DEFAULT_DISPLAY_PREFERENCES: DisplayPreferences = {
   showFeelsLike: true,
   showHumidity: true,
   showWindSpeed: true,
-  showPressure: false,
+  showRainfall: true,
   showUVIndex: false,
   showSunriseSunset: true,
 };
@@ -16,7 +16,7 @@ interface DisplayPreferencesContextType {
   setShowFeelsLike: (show: boolean) => Promise<void>;
   setShowHumidity: (show: boolean) => Promise<void>;
   setShowWindSpeed: (show: boolean) => Promise<void>;
-  setShowPressure: (show: boolean) => Promise<void>;
+  setShowRainfall: (show: boolean) => Promise<void>;
   setShowUVIndex: (show: boolean) => Promise<void>;
   setShowSunriseSunset: (show: boolean) => Promise<void>;
   setPreferences: (preferences: DisplayPreferences) => Promise<void>;
@@ -77,9 +77,9 @@ export function DisplayPreferencesProvider({ children }: DisplayPreferencesProvi
     await savePreferences(newPreferences);
   }, [preferences, savePreferences]);
 
-  // Set show pressure
-  const setShowPressure = useCallback(async (show: boolean) => {
-    const newPreferences = { ...preferences, showPressure: show };
+  // Set show rainfall
+  const setShowRainfall = useCallback(async (show: boolean) => {
+    const newPreferences = { ...preferences, showRainfall: show };
     await savePreferences(newPreferences);
   }, [preferences, savePreferences]);
 
@@ -115,7 +115,7 @@ export function DisplayPreferencesProvider({ children }: DisplayPreferencesProvi
     setShowFeelsLike,
     setShowHumidity,
     setShowWindSpeed,
-    setShowPressure,
+    setShowRainfall,
     setShowUVIndex,
     setShowSunriseSunset,
     setPreferences,
@@ -139,7 +139,7 @@ export function useDisplayPreferences(): DisplayPreferencesContextType {
       setShowFeelsLike: async () => {},
       setShowHumidity: async () => {},
       setShowWindSpeed: async () => {},
-      setShowPressure: async () => {},
+      setShowRainfall: async () => {},
       setShowUVIndex: async () => {},
       setShowSunriseSunset: async () => {},
       setPreferences: async () => {},

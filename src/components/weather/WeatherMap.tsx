@@ -5,6 +5,7 @@ import { WebView } from 'react-native-webview';
 import { useThemeContext } from '@/contexts/ThemeContext';
 import { useAccessibilityContext } from '@/contexts/AccessibilityContext';
 import { WeatherMapLayer, WeatherMapType, WEATHER_MAP_LEGENDS, DEFAULT_WEATHER_MAP_LAYERS } from '@/types/weatherMaps';
+import { typography } from '@/styles/typography';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -40,8 +41,8 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
   const [localLayers, setLocalLayers] = useState<WeatherMapLayer[]>(layers.length > 0 ? layers : DEFAULT_WEATHER_MAP_LAYERS);
   const webViewRef = useRef<WebView>(null);
   const [lastCenter, setLastCenter] = useState<{lat: number, lon: number} | null>(null);
-  const [forceRefresh, setForceRefresh] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [forceRefresh, setForceRefresh] = useState(0);
 
   // Update map when center changes with debouncing
   useEffect(() => {
@@ -57,10 +58,6 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
         Math.abs(lastCenter.lon - center.lon) > 1;
       
       if (centerChanged) {
-        if (__DEV__) {
-          console.log('🗺️ WeatherMap updating to:', center.lat, center.lon, 'Significant:', significantChange);
-        }
-        
         setIsUpdating(true);
         setLastCenter({ lat: center.lat, lon: center.lon });
         
@@ -379,8 +376,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
     },
     mapTitle: {
       marginBottom: 16,
-      fontWeight: '700',
-      fontSize: 20,
+      ...typography.titleLarge,
     },
     webView: {
       height: 300, // Set explicit height for the map
@@ -422,8 +418,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
       // Removed background, border, and padding to eliminate white box
     },
     legendTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
+      ...typography.titleMedium,
       marginBottom: 12,
     },
     legendItem: {
@@ -439,7 +434,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
     },
     legendText: {
       flex: 1,
-      fontSize: 14,
+      ...typography.bodySmall,
       color: theme.colors.onSurface,
     },
     layerButton: {

@@ -6,29 +6,31 @@ import { CurrentWeather, TemperatureUnit } from '../../types';
 import { 
   formatWindSpeed, 
   formatHumidity, 
-  formatPressure, 
+  formatRainfall, 
   formatVisibility,
   formatWindDirection 
 } from '../../utils/formatters';
+import { typography } from '../../styles/typography';
 
 interface WeatherDetailsProps {
   weather: CurrentWeather;
   temperatureUnit?: TemperatureUnit;
   windSpeedUnit?: 'kmh' | 'mph' | 'ms';
-  pressureUnit?: 'hpa' | 'in' | 'mb';
+  rainfallUnit?: 'mm' | 'in';
 }
 
 export const WeatherDetails: React.FC<WeatherDetailsProps> = ({
   weather,
   temperatureUnit = 'celsius',
   windSpeedUnit = 'kmh',
-  pressureUnit = 'hpa',
+  rainfallUnit = 'mm',
 }) => {
   const { effectiveTheme, theme } = useThemeContext();
 
   const main = weather.main;
   const wind = weather.wind;
   const sys = weather.sys;
+
 
   const details = [
     {
@@ -52,9 +54,9 @@ export const WeatherDetails: React.FC<WeatherDetailsProps> = ({
       icon: 'compass',
     },
     {
-      label: 'Pressure',
-      value: formatPressure(main.pressure, pressureUnit),
-      icon: 'gauge',
+      label: 'Rainfall',
+      value: weather.rain?.['1h'] ? formatRainfall(weather.rain['1h'], rainfallUnit) : '0 mm',
+      icon: 'weather-rainy',
     },
     {
       label: 'Visibility',
@@ -121,7 +123,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   detailValue: {
-    fontWeight: '500',
+    ...typography.titleMedium,
     textAlign: 'center',
   },
 });
