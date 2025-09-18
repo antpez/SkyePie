@@ -77,12 +77,18 @@ export function WeatherMapsProvider({ children }: WeatherMapsProviderProps) {
 
   // Update map center
   const updateCenter = useCallback(async (lat: number, lon: number) => {
-    const newConfig = {
-      ...config,
-      center: { lat, lon },
-    };
-    await saveConfig(newConfig);
-  }, [config, saveConfig]);
+    setConfig(prevConfig => {
+      const newConfig = {
+        ...prevConfig,
+        center: { lat, lon },
+      };
+      // Save to storage asynchronously without waiting
+      saveConfig(newConfig).catch(error => {
+        console.error('Error saving weather maps config:', error);
+      });
+      return newConfig;
+    });
+  }, [saveConfig]);
 
   // Update map zoom
   const updateZoom = useCallback(async (zoom: number) => {

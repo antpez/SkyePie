@@ -63,16 +63,20 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
         Math.abs(lastCenter.lon - center.lon) > 1;
       
       if (centerChanged) {
+        console.log('🗺️ WeatherMap: Center changed, updating map:', center.lat, center.lon);
         setIsUpdating(true);
         setLastCenter({ lat: center.lat, lon: center.lon });
         
         if (significantChange) {
+          console.log('🗺️ WeatherMap: Significant change detected, forcing refresh');
           setForceRefresh(prev => prev + 1);
         }
         
         // Add a small delay to ensure WebView is ready
         const timeoutId = setTimeout(() => {
+          console.log('🗺️ WeatherMap: Injecting JavaScript to update map center');
           webViewRef.current?.injectJavaScript(`
+            console.log('🗺️ WeatherMap: JavaScript executing, updating map to:', ${center.lat}, ${center.lon});
             if (window.map && window.map.setView) {
               window.map.setView([${center.lat}, ${center.lon}], ${zoom});
               
@@ -89,6 +93,16 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
                   lon: ${center.lon}
                 }));
               }
+            } else {
+              console.log('🗺️ WeatherMap: Map not ready, retrying in 500ms');
+              setTimeout(() => {
+                if (window.map && window.map.setView) {
+                  window.map.setView([${center.lat}, ${center.lon}], ${zoom});
+                  if (window.userMarker) {
+                    window.userMarker.setLatLng([${center.lat}, ${center.lon}]);
+                  }
+                }
+              }, 500);
             }
           `);
           setIsUpdating(false);
@@ -114,20 +128,34 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
           // }
           break;
         case 'mapReady':
-          // if (__DEV__) {
-          //   console.log('Map ready message received');
-          // }
+          console.log('🗺️ WeatherMap: Map ready message received');
           setIsMapLoading(false);
           // Update map to current center when map is ready
           if (center) {
+            console.log('🗺️ WeatherMap: Setting initial map center on ready:', center.lat, center.lon);
+            console.log('🗺️ Initial map data summary:', {
+              mapCenter: { lat: center.lat, lon: center.lon },
+              zoom: zoom,
+              timestamp: new Date().toISOString()
+            });
             setTimeout(() => {
               webViewRef.current?.injectJavaScript(`
+                console.log('🗺️ WeatherMap: Setting initial map center:', ${center.lat}, ${center.lon});
                 if (window.map && window.map.setView) {
                   window.map.setView([${center.lat}, ${center.lon}], ${zoom});
                   
                   // Update user marker position
                   if (window.userMarker) {
                     window.userMarker.setLatLng([${center.lat}, ${center.lon}]);
+                  }
+                  
+                  // Notify that initial map was set
+                  if (window.ReactNativeWebView) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'mapUpdated',
+                      lat: ${center.lat},
+                      lon: ${center.lon}
+                    }));
                   }
                 }
               `);
@@ -144,6 +172,15 @@ const WeatherMap: React.FC<WeatherMapProps> = ({
           console.error('Stack trace:', data.stack);
           setMapError(`JavaScript error: ${data.error}`);
           setIsMapLoading(false);
+          break;
+        case 'mapUpdated':
+          console.log('🗺️ WeatherMap: Map updated confirmation received:', data.lat, data.lon);
+          console.log('🗺️ Map data summary:', {
+            mapCenter: { lat: data.lat, lon: data.lon },
+            componentCenter: { lat: center.lat, lon: center.lon },
+            zoom: zoom,
+            timestamp: new Date().toISOString()
+          });
           break;
         case 'mapClick':
           // if (__DEV__) {
