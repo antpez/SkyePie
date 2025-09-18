@@ -75,7 +75,7 @@ const WeatherScreen = memo(() => {
   const { units } = useUnits();
   const { preferences: displayPreferences } = useDisplayPreferences();
   const { isInitialized: dbInitialized, isInitializing: dbInitializing, error: dbError } = useDatabase();
-  const { currentLocation, permissionStatus, getCurrentLocation } = useLocation();
+  const { currentLocation, permissionStatus, getCurrentLocation, reverseGeocode } = useLocation();
   const searchParams = useLocalSearchParams();
   const dispatch = useDispatch();
   const selectedLocation = useSelector(selectSelectedLocation);
@@ -202,6 +202,23 @@ const WeatherScreen = memo(() => {
     [hasSearchParams, searchParams.latitude, searchParams.longitude]
   );
 
+  // State for location name from reverse geocoding
+  const [locationName, setLocationName] = useState<string>('Getting location...');
+
+  // Get location name when weather data changes
+  useEffect(() => {
+    if (currentWeather && currentWeather.coord) {
+      if (currentWeather.name && currentWeather.name !== '') {
+        setLocationName(currentWeather.name);
+      } else {
+        // Try to get location name using reverse geocoding
+        getLocationName(currentWeather.coord.lat, currentWeather.coord.lon)
+          .then(name => setLocationName(name))
+          .catch(() => setLocationName('Current Location'));
+      }
+    }
+  }, [currentWeather, getLocationName]);
+
   // Memoized weather data processing
   const processedWeatherData = useMemo(() => {
     if (!currentWeather) return null;
@@ -212,7 +229,7 @@ const WeatherScreen = memo(() => {
     
     // Add safety checks for all object properties
     const processedData = {
-      name: currentWeather.name || 'Unknown Location',
+      name: locationName,
       condition: currentWeather.weather?.[0]?.description || 'Clear sky',
       temperature: currentWeather.main?.temp || 0,
       feelsLike: currentWeather.main?.feels_like || 0,
@@ -228,7 +245,7 @@ const WeatherScreen = memo(() => {
 
 
     return processedData;
-  }, [currentWeather]);
+  }, [currentWeather, locationName]);
 
   // Memoized forecast processing
   const processedForecast = useMemo(() => {
@@ -288,6 +305,19 @@ const WeatherScreen = memo(() => {
     error: { color: theme.colors.error },
     warning: { color: theme.colors.warning },
   }), [theme.colors]);
+
+  // Function to get location name using reverse geocoding
+  const getLocationName = useCallback(async (latitude: number, longitude: number): Promise<string> => {
+    try {
+      console.log('🌍 Getting location name for:', latitude, longitude);
+      const locationName = await reverseGeocode(latitude, longitude);
+      console.log('🌍 Location name obtained:', locationName);
+      return locationName;
+    } catch (error) {
+      console.warn('🌍 Failed to get location name:', error);
+      return 'Current Location';
+    }
+  }, [reverseGeocode]);
 
   const loadWeatherData = useCallback(async (location: LocationCoordinates) => {
     // Prevent multiple simultaneous weather calls
@@ -651,40 +681,47 @@ const WeatherScreen = memo(() => {
           // No saved location, try current location first with timeout
           try {
             console.log('📍 No saved location found, attempting to get current location...');
-            // Add timeout to prevent hanging
-            const locationPromise = getCurrentLocation();
-            const timeoutPromise = new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Location timeout')), 15000) // Increased timeout for physical devices
-            );
+            console.log('📍 Permission status:', permissionStatus);
             
-            const location = await Promise.race([locationPromise, timeoutPromise]);
-            console.log('📍 Current location obtained:', location);
+            // Only try to get location if permission is granted
+            if (permissionStatus.status === 'granted') {
+              // Add timeout to prevent hanging
+              const locationPromise = getCurrentLocation();
+              const timeoutPromise = new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('Location timeout')), 15000) // Increased timeout for physical devices
+              );
+              
+              const location = await Promise.race([locationPromise, timeoutPromise]);
+              console.log('📍 Current location obtained:', location);
             
-            if (location) {
-              // Create a Location object for Redux
-              const locationObj: Location = {
-                id: `current-${location.latitude}-${location.longitude}`,
-                name: 'Current Location',
-                country: '',
-                state: '',
-                latitude: location.latitude,
-                longitude: location.longitude,
-                isCurrent: true,
-                isFavorite: false,
-                searchCount: 0,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              };
-              
-              dispatch(setCurrentLocation(locationObj));
-              dispatch(setSelectedLocation(locationObj)); // Also set as selected location
-              
-              // Try fast initialization first (load cached data immediately)
-              const hasCached = await fastInitialize(location.latitude, location.longitude);
-              setHasCachedData(hasCached);
-              
-              // Then load fresh data in background
-              await loadWeatherData(location);
+              if (location) {
+                // Create a Location object for Redux
+                const locationObj: Location = {
+                  id: `current-${location.latitude}-${location.longitude}`,
+                  name: 'Current Location',
+                  country: '',
+                  state: '',
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  isCurrent: true,
+                  isFavorite: false,
+                  searchCount: 0,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                };
+                
+                dispatch(setCurrentLocation(locationObj));
+                dispatch(setSelectedLocation(locationObj)); // Also set as selected location
+                
+                // Try fast initialization first (load cached data immediately)
+                const hasCached = await fastInitialize(location.latitude, location.longitude);
+                setHasCachedData(hasCached);
+                
+                // Then load fresh data in background
+                await loadWeatherData(location);
+              }
+            } else {
+              console.log('📍 Permission not granted, skipping location fetch');
             }
           } catch (err) {
             console.warn('📍 Location failed, using fallback:', err);

@@ -158,6 +158,12 @@ export class WeatherService {
             params,
           });
 
+          console.log('🌤️ Weather API response:', {
+            name: response.data.name,
+            coord: response.data.coord,
+            sys: response.data.sys,
+            main: response.data.main
+          });
 
           // Cache the result
           this.setCachedData(cacheKey, response.data);
