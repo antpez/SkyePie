@@ -239,6 +239,10 @@ const WeatherScreen = memo(() => {
 
   // Track last coordinates to prevent unnecessary updates
   const lastCoordinatesRef = useRef<{ lat: number; lon: number } | null>(null);
+  
+  // Track last weather fetch time to prevent rapid successive calls
+  const lastWeatherFetchRef = useRef<number>(0);
+  const WEATHER_FETCH_DEBOUNCE_MS = 2000; // 2 seconds
 
   const loadWeatherData = useCallback(async (location: LocationCoordinates) => {
     // Prevent multiple simultaneous weather calls
@@ -246,6 +250,26 @@ const WeatherScreen = memo(() => {
       if (__DEV__) {
         console.log('⏳ Weather already loading, skipping duplicate call');
       }
+      return;
+    }
+
+    // Debounce rapid successive calls
+    const now = Date.now();
+    if (now - lastWeatherFetchRef.current < WEATHER_FETCH_DEBOUNCE_MS) {
+      if (__DEV__) {
+        console.log('⏳ Weather fetch debounced, too soon since last call');
+      }
+      return;
+    }
+    lastWeatherFetchRef.current = now;
+
+    // Check if we're offline and have no cached data
+    if (!networkIsOnline && !hasCachedData) {
+      if (__DEV__) {
+        console.log('📴 Offline and no cached data, skipping weather fetch');
+      }
+      setError('No internet connection and no cached weather data available');
+      setSnackbarVisible(true);
       return;
     }
     
@@ -271,6 +295,8 @@ const WeatherScreen = memo(() => {
       
       if (__DEV__) {
         console.log('🌤️ Loading weather data for coordinates:', location.latitude, location.longitude);
+        console.log('🌐 Network status:', networkIsOnline ? 'online' : 'offline');
+        console.log('💾 Has cached data:', hasCachedData);
         console.trace('🔍 loadWeatherData call stack');
       }
       
@@ -331,6 +357,11 @@ const WeatherScreen = memo(() => {
       console.log('📍 Permission granted, auto-fetching weather data...');
       // Call handleLocationPress directly without dependency
       const autoFetchLocation = async () => {
+        // Skip auto-fetch if offline and no cached data
+        if (!networkIsOnline && !hasCachedData) {
+          console.log('📴 Skipping auto-fetch: offline and no cached data');
+          return;
+        }
         try {
           setError(null); // Clear any existing errors
           const location = await getCurrentLocation();
@@ -376,7 +407,7 @@ const WeatherScreen = memo(() => {
       
       autoFetchLocation();
     }
-  }, [permissionStatus.status, currentWeather, isLoading, isInitializing, getCurrentLocation, loadWeatherData, dispatch]);
+  }, [permissionStatus.status, currentWeather, isLoading, isInitializing, getCurrentLocation, loadWeatherData, dispatch, networkIsOnline, hasCachedData]);
 
   // Refresh weather when app comes to foreground (with intelligent timing)
   useEffect(() => {
@@ -1386,10 +1417,19 @@ const WeatherScreen = memo(() => {
       
 
       {/* Modern offline indicator */}
-      {isOffline && (
+      {isOffline && hasCachedData && (
         <View style={[styles.modernOfflineIndicator, { backgroundColor: theme.colors.warning + '20' }]}>
           <Text variant="labelMedium" style={[styles.modernOfflineText, { color: theme.colors.warning }]}>
             📡 Showing cached data (offline)
+          </Text>
+        </View>
+      )}
+
+      {/* Offline with no cached data */}
+      {isOffline && !hasCachedData && (
+        <View style={[styles.modernOfflineIndicator, { backgroundColor: theme.colors.error + '20' }]}>
+          <Text variant="labelMedium" style={[styles.modernOfflineText, { color: theme.colors.error }]}>
+            📡 No internet connection and no cached data
           </Text>
         </View>
       )}
