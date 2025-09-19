@@ -138,7 +138,8 @@ export const useOfflineWeather = (apiKey?: string) => {
     latitude: number, 
     longitude: number,
     units: TemperatureUnit = 'celsius',
-    forceRefresh: boolean = false
+    forceRefresh: boolean = false,
+    accuracy?: number
   ) => {
     if (!weatherService) {
       throw new Error('Weather service not initialized. Please provide an API key.');
@@ -180,7 +181,8 @@ export const useOfflineWeather = (apiKey?: string) => {
       const weather = await weatherService.getCurrentWeather(
         latitude, 
         longitude, 
-        units === 'fahrenheit' ? 'imperial' : 'metric'
+        units === 'fahrenheit' ? 'imperial' : 'metric',
+        accuracy
       );
 
       setCurrentWeather(weather);
@@ -243,7 +245,8 @@ export const useOfflineWeather = (apiKey?: string) => {
     latitude: number, 
     longitude: number,
     units: TemperatureUnit = 'celsius',
-    forceRefresh: boolean = false
+    forceRefresh: boolean = false,
+    accuracy?: number
   ) => {
     if (!weatherService) {
       throw new Error('Weather service not initialized. Please provide an API key.');
@@ -275,7 +278,8 @@ export const useOfflineWeather = (apiKey?: string) => {
       const forecastData = await weatherService.getWeatherForecast(
         latitude, 
         longitude, 
-        units === 'fahrenheit' ? 'imperial' : 'metric'
+        units === 'fahrenheit' ? 'imperial' : 'metric',
+        accuracy
       );
 
       setForecast(forecastData);

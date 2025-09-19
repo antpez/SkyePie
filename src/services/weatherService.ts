@@ -11,6 +11,10 @@ import { APP_CONFIG } from '../config/app';
 import { networkErrorHandler } from '../utils/networkErrorHandler';
 import { retryHandler } from '../utils/retryHandler';
 import { performanceMonitor } from '../utils/performanceMonitor';
+import { networkAwareConfig } from '../utils/networkAwareConfig';
+import { networkStatusMonitor } from '../utils/networkStatus';
+import { weatherSmartCache, WEATHER_CACHE_CONFIG } from '../utils/smartCache';
+import { LocationCoordinates } from '../types';
 
 /**
  * WeatherService - Handles all weather-related API calls to OpenWeatherMap
@@ -31,11 +35,15 @@ export class WeatherService {
       throw new Error('OpenWeatherMap API key is required. Please configure EXPO_PUBLIC_OPENWEATHER_API_KEY in your .env file');
     }
 
+    // Get network-aware configuration
+    const networkStatus = networkStatusMonitor.getCurrentStatus();
+    const weatherConfig = networkAwareConfig.getWeatherConfigForNetwork(networkStatus);
+    
     this.config = {
       baseUrl: APP_CONFIG.api.openWeatherMap.baseUrl,
       apiKey,
-      timeout: 3000, // Reduced to 3 seconds for faster failures
-      retryAttempts: 1, // Reduced to 1 retry for faster response
+      timeout: weatherConfig.timeout,
+      retryAttempts: weatherConfig.retryAttempts,
     };
 
     this.api = axios.create({
@@ -72,6 +80,22 @@ export class WeatherService {
     return WeatherService.instance;
   }
 
+  /**
+   * Update configuration based on current network conditions
+   */
+  updateNetworkAwareConfig(): void {
+    const networkStatus = networkStatusMonitor.getCurrentStatus();
+    const weatherConfig = networkAwareConfig.getWeatherConfigForNetwork(networkStatus);
+    
+    this.config.timeout = weatherConfig.timeout;
+    this.config.retryAttempts = weatherConfig.retryAttempts;
+    
+    // Update axios instance timeout
+    this.api.defaults.timeout = weatherConfig.timeout;
+    
+    console.log('🌐 Updated weather service config for network:', weatherConfig);
+  }
+
   private setupCacheCleanup() {
     // Clean up expired cache entries every 2 minutes for better memory management
     setInterval(() => {
@@ -81,6 +105,9 @@ export class WeatherService {
           this.cache.delete(key);
         }
       }
+      
+      // Also clean up smart cache
+      weatherSmartCache.cleanup();
     }, 2 * 60 * 1000);
   }
 
@@ -140,27 +167,38 @@ export class WeatherService {
   async getCurrentWeather(
     latitude: number, 
     longitude: number,
-    units: 'metric' | 'imperial' = 'metric'
+    units: 'metric' | 'imperial' = 'metric',
+    accuracy?: number
   ): Promise<CurrentWeather> {
     return performanceMonitor.measureAsync('WeatherService.getCurrentWeather', async () => {
-      const params = { lat: latitude, lon: longitude, units };
-      const cacheKey = this.getCacheKey('/weather', params);
+      const location: LocationCoordinates = {
+        latitude,
+        longitude,
+        accuracy,
+      };
       
-      // Check cache first
-      const cachedData = this.getCachedData<CurrentWeather>(cacheKey);
+      const additionalParams = { units };
+      
+      // Check smart cache first
+      const cachedData = weatherSmartCache.get(location, additionalParams);
       if (cachedData) {
+        console.log('🌤️ Using smart cached weather data');
         return cachedData;
       }
 
       const result = await retryHandler.executeWithRetry(
         async () => {
           const response: AxiosResponse<CurrentWeather> = await this.api.get('/weather', {
-            params,
+            params: { lat: latitude, lon: longitude, units },
           });
 
-
-          // Cache the result
-          this.setCachedData(cacheKey, response.data);
+          // Store in smart cache with location accuracy
+          weatherSmartCache.set(location, response.data, additionalParams);
+          
+          // Also store in legacy cache for backward compatibility
+          const legacyCacheKey = this.getCacheKey('/weather', { lat: latitude, lon: longitude, units });
+          this.setCachedData(legacyCacheKey, response.data);
+          
           return response.data;
         },
         {
@@ -178,26 +216,37 @@ export class WeatherService {
   async getWeatherForecast(
     latitude: number, 
     longitude: number,
-    units: 'metric' | 'imperial' = 'metric'
+    units: 'metric' | 'imperial' = 'metric',
+    accuracy?: number
   ): Promise<WeatherForecast> {
     return performanceMonitor.measureAsync('WeatherService.getWeatherForecast', async () => {
-      const params = { lat: latitude, lon: longitude, units };
-      const cacheKey = this.getCacheKey('/forecast', params);
+      const location: LocationCoordinates = {
+        latitude,
+        longitude,
+        accuracy,
+      };
       
-      // Check cache first
-      const cachedData = this.getCachedData<WeatherForecast>(cacheKey);
+      const additionalParams = { units };
+      
+      // Check smart cache first
+      const cachedData = weatherSmartCache.get(location, additionalParams);
       if (cachedData) {
+        console.log('🌤️ Using smart cached forecast data');
         return cachedData;
       }
 
       try {
         const response: AxiosResponse<WeatherForecast> = await this.api.get('/forecast', {
-          params,
+          params: { lat: latitude, lon: longitude, units },
         });
 
-
-        // Cache the result
-        this.setCachedData(cacheKey, response.data);
+        // Store in smart cache with location accuracy
+        weatherSmartCache.set(location, response.data, additionalParams);
+        
+        // Also store in legacy cache for backward compatibility
+        const legacyCacheKey = this.getCacheKey('/forecast', { lat: latitude, lon: longitude, units });
+        this.setCachedData(legacyCacheKey, response.data);
+        
         return response.data;
       } catch (error) {
         console.error('Error fetching weather forecast:', error);

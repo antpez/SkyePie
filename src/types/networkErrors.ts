@@ -40,10 +40,10 @@ export interface NetworkErrorHandler {
 }
 
 export const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxAttempts: 3,
-  baseDelay: 1000,
-  maxDelay: 10000,
-  backoffMultiplier: 2,
+  maxAttempts: 4, // Increased attempts for better accuracy
+  baseDelay: 500, // Reduced initial delay for faster retries
+  maxDelay: 15000, // Increased max delay for better reliability
+  backoffMultiplier: 1.5, // Gentler backoff for better user experience
 };
 
 export const NETWORK_ERROR_CODES = {

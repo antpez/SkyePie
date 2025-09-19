@@ -1,5 +1,7 @@
 import * as Location from 'expo-location';
 import { LocationCoordinates, LocationPermissionStatus, LocationError } from '../types';
+import { networkAwareConfig } from '../utils/networkAwareConfig';
+import { networkStatusMonitor } from '../utils/networkStatus';
 
 export class LocationService {
   private static instance: LocationService;
@@ -73,32 +75,72 @@ export class LocationService {
         };
       }
 
-      // Race a high-accuracy request with a timeout to avoid hanging on Android
-      const timeoutMs = 15000;
+      // Get network-aware configuration for optimal location accuracy
+      const networkStatus = networkStatusMonitor.getCurrentStatus();
+      const locationConfig = networkAwareConfig.getLocationConfigForNetwork(networkStatus);
+      
+      console.log('📍 Using network-aware location config:', locationConfig);
+
+      const timeoutMs = locationConfig.timeout;
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject({ code: 'E_LOCATION_TIMEOUT', message: 'Timed out getting location' }), timeoutMs)
       );
 
+      // Map accuracy string to Location.Accuracy enum
+      const getAccuracyEnum = (accuracy: string) => {
+        switch (accuracy) {
+          case 'highest': return Location.Accuracy.Highest;
+          case 'high': return Location.Accuracy.High;
+          case 'balanced': return Location.Accuracy.Balanced;
+          case 'low': return Location.Accuracy.Low;
+          default: return Location.Accuracy.High;
+        }
+      };
+
+      // Try network-optimized accuracy first, then fallback to progressively less accurate options
       const liveLocation = await Promise.race([
         Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-          timeInterval: 10000,
-          distanceInterval: 10,
+          accuracy: getAccuracyEnum(locationConfig.accuracy),
+          timeInterval: locationConfig.timeInterval,
+          distanceInterval: locationConfig.distanceInterval,
+          mayShowUserSettingsDialog: true,
         }),
         timeoutPromise,
       ] as const).catch(async (err) => {
-        console.warn('📍 High accuracy location failed, falling back to balanced:', err);
-        // Fallback to balanced accuracy
-        return await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 10000,
-          distanceInterval: 25,
+        console.warn('📍 Primary location accuracy failed, trying fallback:', err);
+        // Fallback to high accuracy
+        return await Promise.race([
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+            timeInterval: Math.min(locationConfig.timeInterval * 0.8, 10000),
+            distanceInterval: Math.max(locationConfig.distanceInterval * 2, 10),
+            mayShowUserSettingsDialog: true,
+          }),
+          timeoutPromise,
+        ] as const).catch(async (err2) => {
+          console.warn('📍 High accuracy location failed, falling back to balanced:', err2);
+          // Final fallback to balanced accuracy
+          return await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: Math.min(locationConfig.timeInterval * 0.6, 8000),
+            distanceInterval: Math.max(locationConfig.distanceInterval * 3, 25),
+            mayShowUserSettingsDialog: true,
+          });
         });
       });
 
       const location = liveLocation as Location.LocationObject;
       
       console.log('📍 Location obtained:', location.coords);
+
+      // Validate location accuracy and quality
+      const accuracy = location.coords.accuracy || 0;
+      const maxAcceptableAccuracy = 100; // meters - reject locations less accurate than 100m
+      
+      if (accuracy > maxAcceptableAccuracy) {
+        console.warn(`📍 Location accuracy (${accuracy}m) exceeds acceptable threshold (${maxAcceptableAccuracy}m)`);
+        // Still use the location but log the warning
+      }
 
       const coordinates: LocationCoordinates = {
         latitude: location.coords.latitude,
@@ -109,7 +151,14 @@ export class LocationService {
         speed: location.coords.speed || undefined,
       };
 
-      this.currentLocation = coordinates;
+      // Store the most accurate location we've obtained
+      if (!this.currentLocation || (this.currentLocation.accuracy && accuracy < this.currentLocation.accuracy)) {
+        this.currentLocation = coordinates;
+        console.log('📍 Updated to more accurate location:', coordinates);
+      } else {
+        this.currentLocation = coordinates;
+      }
+      
       return coordinates;
     } catch (error) {
       console.error('Error getting current location:', error);

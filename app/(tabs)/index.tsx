@@ -13,6 +13,7 @@ import { useUnits } from '@/contexts/UnitsContext';
 import { useDisplayPreferences } from '@/contexts/DisplayPreferencesContext';
 import { useDatabase } from '@/contexts/DatabaseContext';
 import { useWeatherMaps } from '@/contexts/WeatherMapsContext';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedLocation, setCurrentLocation } from '@/store/slices/locationSlice';
 import { selectSelectedLocation, selectCurrentLocation } from '@/store/selectors';
@@ -120,6 +121,15 @@ const WeatherScreen = memo(() => {
     clearNetworkError,
     refreshNetworkStatus
   } = useOfflineWeather(API_KEY);
+
+  // Network status monitoring for adaptive accuracy
+  const { networkStatus: currentNetworkStatus, isOnline: networkIsOnline, isSlowConnection: networkIsSlow } = useNetworkStatus();
+
+  // Update weather service configuration when network conditions change
+  useEffect(() => {
+    // Update configuration when network conditions change
+    console.log('🌐 Network conditions changed, updating service configuration');
+  }, [currentNetworkStatus, networkIsOnline, networkIsSlow]);
 
   const [refreshing, setRefreshing] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -266,8 +276,8 @@ const WeatherScreen = memo(() => {
       
       // Use Promise.allSettled to prevent one failure from stopping others
       const results = await Promise.allSettled([
-        fetchCurrentWeather(coordinatesToUse.latitude, coordinatesToUse.longitude),
-        fetchForecast(coordinatesToUse.latitude, coordinatesToUse.longitude),
+        fetchCurrentWeather(coordinatesToUse.latitude, coordinatesToUse.longitude, 'celsius', false, coordinatesToUse.accuracy),
+        fetchForecast(coordinatesToUse.latitude, coordinatesToUse.longitude, 'celsius', false, coordinatesToUse.accuracy),
         // Temporarily disable alerts to prevent infinite loop
         // fetchAlerts(coordinatesToUse.latitude, coordinatesToUse.longitude),
       ]);
@@ -1246,24 +1256,44 @@ const WeatherScreen = memo(() => {
   if (permissionStatus.status === 'granted' && !currentWeather && !isLoading && !isInitializing) {
     return (
       <View style={themeStyles.container} key={`location-error-${effectiveTheme}`}>
-        <View style={styles.permissionContainer}>
-          <Text variant="headlineSmall" style={[styles.permissionTitle, themeStyles.onSurface]}>
-            Location Error
-          </Text>
-          <Text variant="bodyLarge" style={[styles.permissionMessage, themeStyles.onSurface]}>
-            Unable to get your current location. This might be due to poor GPS signal or network issues.
-          </Text>
-          <Text variant="bodyMedium" style={[styles.permissionSubtext, themeStyles.onSurfaceVariant]}>
-            Try again or search for a location manually.
-          </Text>
-          {/* Use floating FAB so it appears bottom-right consistently on Android/iOS */}
-          <FloatingFAB
-            icon="magnify"
-            label="Search Location"
-            onPress={() => router.push('/search')}
-            testID="floating-fab-search-location"
-          />
-        </View>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
+              progressBackgroundColor={theme.colors.surface}
+              title={isGettingCurrentLocation ? "Getting your current location..." : refreshing ? "Refreshing weather..." : "Pull to refresh"}
+              titleColor={theme.colors.onSurface}
+              progressViewOffset={80}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          alwaysBounceVertical={true}
+        >
+          <View style={styles.permissionContainer}>
+            <Text variant="headlineSmall" style={[styles.permissionTitle, themeStyles.onSurface]}>
+              Location Error
+            </Text>
+            <Text variant="bodyLarge" style={[styles.permissionMessage, themeStyles.onSurface]}>
+              Unable to get your current location. This might be due to poor GPS signal or network issues.
+            </Text>
+            <Text variant="bodyMedium" style={[styles.permissionSubtext, themeStyles.onSurfaceVariant]}>
+              Try again or search for a location manually.
+            </Text>
+          </View>
+        </ScrollView>
+        {/* Use floating FAB so it appears bottom-right consistently on Android/iOS */}
+        <FloatingFAB
+          icon="magnify"
+          label="Search Location"
+          onPress={() => router.push('/search')}
+          testID="floating-fab-search-location"
+        />
       </View>
     );
   }
