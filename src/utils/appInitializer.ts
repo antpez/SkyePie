@@ -1,4 +1,5 @@
 import { storageService } from '../services/storageService';
+import { settingsPersistenceService } from '../services/settingsPersistenceService';
 import { databaseConnection } from '../database/connection';
 import { deviceCompatibility } from './deviceCompatibility';
 
@@ -144,6 +145,11 @@ export class AppInitializer {
       // Test storage access
       const theme = await storageService.getTheme();
       console.log('✅ Storage test successful, theme:', theme);
+      
+      // Initialize settings persistence
+      console.log('🔄 Initializing settings persistence...');
+      const settings = await settingsPersistenceService.initializeSettings();
+      console.log('✅ Settings persistence initialized:', settings.id);
     } catch (error) {
       console.error('❌ Storage initialization failed:', error);
       throw new Error('Failed to initialize storage');
