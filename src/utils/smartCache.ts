@@ -107,6 +107,9 @@ export class SmartCache<T> {
       console.log(`📍 Location accuracy improved from ${entry.accuracy}m to ${currentAccuracy}m, cache may need refresh`);
     }
 
+    console.log(`💾 Retrieved from cache: ${key}`);
+    console.log(`💾 Data type: ${typeof entry.data}, has main: ${(entry.data as any).main ? 'yes' : 'no'}, has weather: ${(entry.data as any).weather ? 'yes' : 'no'}`);
+    
     return entry.data;
   }
 
@@ -122,6 +125,12 @@ export class SmartCache<T> {
     const accuracy = location.accuracy || 100;
     const ttl = this.calculateTTL(accuracy);
 
+    // Validate data before storing
+    if (!data || typeof data !== 'object') {
+      console.warn('💾 Invalid data provided to smart cache, skipping storage');
+      return;
+    }
+
     const entry: CacheEntry<T> = {
       data,
       timestamp: Date.now(),
@@ -133,6 +142,8 @@ export class SmartCache<T> {
     this.cache.set(key, entry);
     
     console.log(`💾 Cached data with accuracy ${accuracy}m, TTL: ${Math.round(ttl / 1000)}s`);
+    console.log(`💾 Cache key: ${key}`);
+    console.log(`💾 Data type: ${typeof data}, has main: ${(data as any).main ? 'yes' : 'no'}, has weather: ${(data as any).weather ? 'yes' : 'no'}`);
   }
 
   /**

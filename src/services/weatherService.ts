@@ -183,7 +183,13 @@ export class WeatherService {
       const cachedData = weatherSmartCache.get(location, additionalParams);
       if (cachedData) {
         console.log('🌤️ Using smart cached weather data');
-        return cachedData;
+        console.log('🌤️ Cached data structure:', JSON.stringify(cachedData, null, 2));
+        // Validate cached data structure
+        if (cachedData && typeof cachedData === 'object' && cachedData.main && cachedData.weather) {
+          return cachedData;
+        } else {
+          console.warn('🌤️ Cached data is corrupted, fetching fresh data');
+        }
       }
 
       const result = await retryHandler.executeWithRetry(
@@ -232,7 +238,13 @@ export class WeatherService {
       const cachedData = weatherSmartCache.get(location, additionalParams);
       if (cachedData) {
         console.log('🌤️ Using smart cached forecast data');
-        return cachedData;
+        console.log('🌤️ Cached forecast structure:', JSON.stringify(cachedData, null, 2));
+        // Validate cached data structure
+        if (cachedData && typeof cachedData === 'object' && cachedData.list && Array.isArray(cachedData.list)) {
+          return cachedData;
+        } else {
+          console.warn('🌤️ Cached forecast data is corrupted, fetching fresh data');
+        }
       }
 
       try {
