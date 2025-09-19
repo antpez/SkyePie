@@ -156,8 +156,22 @@ export class WeatherService {
         return response;
       },
       async (error) => {
-        // Use the new network error handler
-        const networkError = networkErrorHandler.createNetworkError(error);
+        // Enhanced error handling for network issues
+        let networkError;
+        
+        if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+          networkError = {
+            code: 'ERR_NETWORK',
+            message: 'Unable to connect to the weather service. Please check your internet connection.',
+            type: 'CONNECTION_ERROR',
+            details: error,
+            timestamp: Date.now(),
+            retryable: true,
+          };
+        } else {
+          networkError = networkErrorHandler.createNetworkError(error);
+        }
+        
         networkErrorHandler.logError(networkError, 'WeatherService');
         throw networkError;
       }
@@ -247,23 +261,30 @@ export class WeatherService {
         }
       }
 
-      try {
-        const response: AxiosResponse<WeatherForecast> = await this.api.get('/forecast', {
-          params: { lat: latitude, lon: longitude, units },
-        });
+      const result = await retryHandler.executeWithRetry(
+        async () => {
+          const response: AxiosResponse<WeatherForecast> = await this.api.get('/forecast', {
+            params: { lat: latitude, lon: longitude, units },
+          });
 
-        // Store in smart cache with location accuracy
-        weatherSmartCache.set(location, response.data, additionalParams);
-        
-        // Also store in legacy cache for backward compatibility
-        const legacyCacheKey = this.getCacheKey('/forecast', { lat: latitude, lon: longitude, units });
-        this.setCachedData(legacyCacheKey, response.data);
-        
-        return response.data;
-      } catch (error) {
-        console.error('Error fetching weather forecast:', error);
-        throw error;
-      }
+          // Store in smart cache with location accuracy
+          weatherSmartCache.set(location, response.data, additionalParams);
+          
+          // Also store in legacy cache for backward compatibility
+          const legacyCacheKey = this.getCacheKey('/forecast', { lat: latitude, lon: longitude, units });
+          this.setCachedData(legacyCacheKey, response.data);
+          
+          return response.data;
+        },
+        {
+          context: 'WeatherService.getWeatherForecast',
+          onRetry: (attempt, error) => {
+            console.warn(`Retrying getWeatherForecast (attempt ${attempt}):`, error.message);
+          },
+        }
+      );
+      
+      return result;
     }, { latitude, longitude, units });
   }
 

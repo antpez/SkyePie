@@ -276,8 +276,14 @@ const WeatherScreen = memo(() => {
       
       // Use Promise.allSettled to prevent one failure from stopping others
       const results = await Promise.allSettled([
-        fetchCurrentWeather(coordinatesToUse.latitude, coordinatesToUse.longitude, 'celsius', false, coordinatesToUse.accuracy),
-        fetchForecast(coordinatesToUse.latitude, coordinatesToUse.longitude, 'celsius', false, coordinatesToUse.accuracy),
+        fetchCurrentWeather(coordinatesToUse.latitude, coordinatesToUse.longitude, 'celsius', false, coordinatesToUse.accuracy).catch(err => {
+          console.warn('Current weather fetch failed:', err);
+          return null;
+        }),
+        fetchForecast(coordinatesToUse.latitude, coordinatesToUse.longitude, 'celsius', false, coordinatesToUse.accuracy).catch(err => {
+          console.warn('Forecast fetch failed:', err);
+          return null;
+        }),
         // Temporarily disable alerts to prevent infinite loop
         // fetchAlerts(coordinatesToUse.latitude, coordinatesToUse.longitude),
       ]);
@@ -558,7 +564,12 @@ const WeatherScreen = memo(() => {
         dispatch(setSelectedLocation(locationObj));
         
         // Refresh weather data with current location
-        await refreshWeather(currentLocation.latitude, currentLocation.longitude);
+        try {
+          await refreshWeather(currentLocation.latitude, currentLocation.longitude);
+        } catch (weatherError) {
+          console.warn('Weather refresh failed:', weatherError);
+          // Don't throw - let the app continue with cached data if available
+        }
         
         if (__DEV__) {
           console.log('✅ Refresh completed with current location');
@@ -569,7 +580,12 @@ const WeatherScreen = memo(() => {
           if (__DEV__) {
             console.log('⚠️ Current location failed, refreshing with existing location');
           }
-          await refreshWeather(locationToUse.latitude, locationToUse.longitude);
+          try {
+            await refreshWeather(locationToUse.latitude, locationToUse.longitude);
+          } catch (weatherError) {
+            console.warn('Weather refresh with fallback location failed:', weatherError);
+            // Don't throw - let the app continue with cached data if available
+          }
         } else {
           if (__DEV__) {
             console.log('❌ No location available for refresh');
