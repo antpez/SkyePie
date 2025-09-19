@@ -211,7 +211,7 @@ const WeatherScreen = memo(() => {
 
   // Log weather data when it changes (development only)
   useEffect(() => {
-    if (currentWeather && __DEV__) {
+    if (currentWeather && __DEV__ && currentWeather.dt) {
       console.log('🌤️ Weather data loaded for location:', {
         location: locationToUse,
         weather: {
@@ -235,7 +235,7 @@ const WeatherScreen = memo(() => {
         });
       }
     }
-  }, [currentWeather, locationToUse, selectedLocation]);
+  }, [currentWeather?.dt, locationToUse, selectedLocation]);
 
   // Track last coordinates to prevent unnecessary updates
   const lastCoordinatesRef = useRef<{ lat: number; lon: number } | null>(null);
@@ -297,7 +297,6 @@ const WeatherScreen = memo(() => {
         console.log('🌤️ Loading weather data for coordinates:', location.latitude, location.longitude);
         console.log('🌐 Network status:', networkIsOnline ? 'online' : 'offline');
         console.log('💾 Has cached data:', hasCachedData);
-        console.trace('🔍 loadWeatherData call stack');
       }
       
       // Use Promise.allSettled to prevent one failure from stopping others
@@ -475,7 +474,8 @@ const WeatherScreen = memo(() => {
   const processedWeatherData = useMemo(() => {
     if (!currentWeather) return null;
     
-    if (__DEV__) {
+    // Only log when weather data changes (not on every render)
+    if (__DEV__ && currentWeather.dt) {
       console.log('Processing weather data for location:', currentWeather.name, 'Coordinates from weather API response:', currentWeather.coord?.lat, currentWeather.coord?.lon);
     }
     

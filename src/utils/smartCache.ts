@@ -107,8 +107,10 @@ export class SmartCache<T> {
       console.log(`📍 Location accuracy improved from ${entry.accuracy}m to ${currentAccuracy}m, cache may need refresh`);
     }
 
-    console.log(`💾 Retrieved from cache: ${key}`);
-    console.log(`💾 Data type: ${typeof entry.data}, has main: ${(entry.data as any).main ? 'yes' : 'no'}, has weather: ${(entry.data as any).weather ? 'yes' : 'no'}`);
+          // Only log cache hits in development and not too frequently
+          if (__DEV__ && Math.random() < 0.1) { // Only log 10% of cache hits
+            console.log(`💾 Retrieved from cache: ${key}`);
+          }
     
     return entry.data;
   }
@@ -139,11 +141,12 @@ export class SmartCache<T> {
       ttl,
     };
 
-    this.cache.set(key, entry);
-    
-    console.log(`💾 Cached data with accuracy ${accuracy}m, TTL: ${Math.round(ttl / 1000)}s`);
-    console.log(`💾 Cache key: ${key}`);
-    console.log(`💾 Data type: ${typeof data}, has main: ${(data as any).main ? 'yes' : 'no'}, has weather: ${(data as any).weather ? 'yes' : 'no'}`);
+          this.cache.set(key, entry);
+          
+          // Only log cache storage occasionally in development
+          if (__DEV__ && Math.random() < 0.2) { // Only log 20% of cache stores
+            console.log(`💾 Cached data with accuracy ${accuracy}m, TTL: ${Math.round(ttl / 1000)}s`);
+          }
   }
 
   /**

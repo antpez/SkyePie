@@ -193,18 +193,20 @@ export class WeatherService {
       
       const additionalParams = { units };
       
-      // Check smart cache first
-      const cachedData = weatherSmartCache.get(location, additionalParams);
-      if (cachedData) {
-        console.log('🌤️ Using smart cached weather data');
-        console.log('🌤️ Cached data structure:', JSON.stringify(cachedData, null, 2));
-        // Validate cached data structure
-        if (cachedData && typeof cachedData === 'object' && cachedData.main && cachedData.weather) {
-          return cachedData;
-        } else {
-          console.warn('🌤️ Cached data is corrupted, fetching fresh data');
-        }
-      }
+          // Check smart cache first
+          const cachedData = weatherSmartCache.get(location, additionalParams);
+          if (cachedData) {
+            // Only log cache usage occasionally
+            if (__DEV__ && Math.random() < 0.1) {
+              console.log('🌤️ Using smart cached weather data');
+            }
+            // Validate cached data structure
+            if (cachedData && typeof cachedData === 'object' && cachedData.main && cachedData.weather) {
+              return cachedData;
+            } else {
+              console.warn('🌤️ Cached data is corrupted, fetching fresh data');
+            }
+          }
 
       const result = await retryHandler.executeWithRetry(
         async () => {
@@ -248,18 +250,20 @@ export class WeatherService {
       
       const additionalParams = { units };
       
-      // Check smart cache first
-      const cachedData = weatherSmartCache.get(location, additionalParams);
-      if (cachedData) {
-        console.log('🌤️ Using smart cached forecast data');
-        console.log('🌤️ Cached forecast structure:', JSON.stringify(cachedData, null, 2));
-        // Validate cached data structure
-        if (cachedData && typeof cachedData === 'object' && cachedData.list && Array.isArray(cachedData.list)) {
-          return cachedData;
-        } else {
-          console.warn('🌤️ Cached forecast data is corrupted, fetching fresh data');
+        // Check smart cache first
+        const cachedData = weatherSmartCache.get(location, additionalParams);
+        if (cachedData) {
+          // Only log cache usage occasionally
+          if (__DEV__ && Math.random() < 0.1) {
+            console.log('🌤️ Using smart cached forecast data');
+          }
+          // Validate cached data structure
+          if (cachedData && typeof cachedData === 'object' && cachedData.list && Array.isArray(cachedData.list)) {
+            return cachedData;
+          } else {
+            console.warn('🌤️ Cached forecast data is corrupted, fetching fresh data');
+          }
         }
-      }
 
       const result = await retryHandler.executeWithRetry(
         async () => {
