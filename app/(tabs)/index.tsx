@@ -566,6 +566,44 @@ const WeatherScreen = memo(() => {
     try {
       if (__DEV__) {
         console.log('🔄 Refresh triggered - getting current location');
+        console.log('🌐 Network status:', networkIsOnline ? 'online' : 'offline');
+      }
+      
+      // Check if we're offline and have no cached data
+      if (!networkIsOnline && !hasCachedData) {
+        if (__DEV__) {
+          console.log('📴 Refresh skipped: offline and no cached data');
+        }
+        setError('No internet connection and no cached weather data available');
+        setSnackbarVisible(true);
+        return;
+      }
+
+      // If offline but have cached data, only refresh location, not weather
+      if (!networkIsOnline && hasCachedData) {
+        if (__DEV__) {
+          console.log('📴 Offline refresh: updating location only, using cached weather data');
+        }
+        // Still get current location for map updates, but don't fetch weather
+        const currentLocation = await getCurrentLocation();
+        if (currentLocation) {
+          const locationObj: Location = {
+            id: `current-${currentLocation.latitude}-${currentLocation.longitude}`,
+            name: 'Current Location',
+            country: '',
+            state: '',
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+            isCurrent: true,
+            isFavorite: false,
+            searchCount: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          dispatch(setCurrentLocation(locationObj));
+          dispatch(setSelectedLocation(locationObj));
+        }
+        return;
       }
       
       // Get current location first
@@ -632,7 +670,7 @@ const WeatherScreen = memo(() => {
       setRefreshing(false);
       setIsGettingCurrentLocation(false);
     }
-  }, [getCurrentLocation, refreshWeather, dispatch, locationToUse]);
+  }, [getCurrentLocation, refreshWeather, dispatch, locationToUse, networkIsOnline, hasCachedData]);
 
   const handleLocationPress = useCallback(async () => {
     try {
@@ -1313,7 +1351,15 @@ const WeatherScreen = memo(() => {
               colors={[theme.colors.primary]}
               tintColor={theme.colors.primary}
               progressBackgroundColor={theme.colors.surface}
-              title={isGettingCurrentLocation ? "Getting your current location..." : refreshing ? "Refreshing weather..." : "Pull to refresh"}
+              title={
+                isGettingCurrentLocation 
+                  ? "Getting your current location..." 
+                  : refreshing 
+                    ? "Refreshing weather..." 
+                    : !networkIsOnline && !hasCachedData
+                      ? "No internet connection"
+                      : "Pull to refresh"
+              }
               titleColor={theme.colors.onSurface}
               progressViewOffset={80}
             />
@@ -1444,7 +1490,15 @@ const WeatherScreen = memo(() => {
             colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}
             progressBackgroundColor={theme.colors.surface}
-            title={isGettingCurrentLocation ? "Getting your current location..." : refreshing ? "Refreshing weather..." : "Pull to refresh"}
+            title={
+              isGettingCurrentLocation 
+                ? "Getting your current location..." 
+                : refreshing 
+                  ? "Refreshing weather..." 
+                  : !networkIsOnline && !hasCachedData
+                    ? "No internet connection"
+                    : "Pull to refresh"
+            }
             titleColor={theme.colors.onSurface}
             progressViewOffset={80}
           />
